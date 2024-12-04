@@ -1,7 +1,7 @@
-const { Container, Sprite, Texture, Graphics } = PIXI;
-import { Block } from './Block.js';
-import { level_1 } from '../levels/level_1.js';
-import { spriteMap } from '../sprites/spriteMap.js';
+const {Container, Sprite, Texture, Graphics} = PIXI;
+import {Block} from './Block.js';
+import {level_1} from '../levels/level_1.js';
+import {spriteMap} from '../sprites/spriteMap.js';
 
 export default class Game {
     constructor(app) {
@@ -76,9 +76,9 @@ export default class Game {
         const level = this.levels[levelIndex];
         if (!level) return;
 
-        level.forEach(({ row, col, type }) => {
+        level.forEach(({row, col, type}) => {
             if (this.gameMatrix[row][col] === 1) {
-                const { id, sprite } = spriteMap[type];
+                const {id, sprite} = spriteMap[type];
                 const texture = Texture.from(sprite);
                 const gameSprite = new Sprite(texture);
 
@@ -108,7 +108,7 @@ export default class Game {
 
     onPointerDown(event) {
         const localPos = event.data.getLocalPosition(this.cellContainer);
-        console.log(localPos);
+        this.initialMousePosition = { x: localPos.x, y: localPos.y };
 
         // Отримуємо координати кліка відносно `cellContainer`
         const col = Math.floor(localPos.x / this.cellWidth);
@@ -137,20 +137,20 @@ export default class Game {
                 );
                 console.log(block);
                 if (block && block.block.isMovable) {
-                    const mousePosition = { x: localPos.x, y: localPos.y };
-                    this.onBlockGrab(mousePosition, block);
+                    const mousePosition = {x: localPos.x, y: localPos.y};
+                    this.onBlockGrab(block);
                 }
             }
         }
     }
 
 
-    onBlockGrab(mousePosition, block) {
+    onBlockGrab(block) {
         this.draggedBlock = block;
 
         // Зберігаємо координати миші та початкові координати блоку
-        this.initialMousePosition = mousePosition;
-        this.initialBlockPosition = { x: block.x, y: block.y };
+        // this.initialMousePosition = mousePosition;
+        this.initialBlockPosition = {x: block.x, y: block.y};
 
         // Додаємо обробник для pointermove та pointerup
         this.app.stage.on('pointermove', this.onPointerMoveHandler);
@@ -161,18 +161,67 @@ export default class Game {
         // Отримуємо нову позицію миші
         const localPos = event.data.getLocalPosition(this.cellContainer);
 
-        const deltaX = localPos.x - this.initialMousePosition.x;
-        const deltaY = localPos.y - this.initialMousePosition.y;
+        let deltaX = localPos.x - this.initialMousePosition.x;
+        let deltaY = localPos.y - this.initialMousePosition.y;
 
-        // Оновлюємо позицію блоку на основі переміщення миші
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            this.draggedBlock.y = this.initialBlockPosition.y;
-            this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
-        } else {
-            this.draggedBlock.x = this.initialBlockPosition.x;
-            this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
+        let movedCols = 0;
+        let movedRows = 0;
+
+        // Обчислюємо скільки колонок чи рядків перемістилось
+        if (Math.abs(deltaX) >= 70 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            movedCols = Math.floor(Math.abs(deltaX) / 70);
+        }
+        if (Math.abs(deltaY) >= 70 && Math.abs(deltaX) < Math.abs(deltaY)) {
+            movedRows = Math.floor(Math.abs(deltaY) / 70);
+        }
+
+        // Якщо переміщено більше ніж на 1 клітинку по колонках чи рядках
+        if (movedCols >= 1 || movedRows >= 1) {
+            // Оновлюємо початкову позицію для нових розрахунків
+            this.initialMousePosition = { x: localPos.x, y: localPos.y };
+            this.initialBlockPosition = { x: this.draggedBlock.x, y: this.draggedBlock.y };
+
+            // Оновлюємо координати
+            const col = Math.round(this.draggedBlock.x / this.cellWidth);
+            const row = Math.round(this.draggedBlock.y / this.cellHeight);
+
+            if (
+                row >= 0 &&
+                row < this.gameMatrix.length &&
+                col >= 0 &&
+                col < this.gameMatrix[0].length &&
+                this.gameMatrix[row][col] === 1
+            ) {
+                console.log('mee')
+                // Оновлюємо координати блоку в грі
+                this.draggedBlock.x = col * this.cellWidth;
+                this.draggedBlock.y = row * this.cellHeight;
+
+                // Оновлюємо координати в об'єкті блоку
+                this.draggedBlock.block.col = col;
+                this.draggedBlock.block.row = row;
+
+                // Оновлюємо гру в матриці
+                const prevCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
+                const prevRow = Math.round(this.initialBlockPosition.y / this.cellHeight);
+                this.gameMatrix[prevRow][prevCol] = 1;
+                this.gameMatrix[row][col] = this.draggedBlock.block.id;
+            }
+        }
+        // Якщо рух по осі X більший, то блок рухається тільки по осі X
+        if (Math.abs(deltaX) > Math.abs(deltaY) && movedCols === 0 && movedRows === 0) {
+            this.draggedBlock.y = this.initialBlockPosition.y;  // Фіксуємо Y
+            this.draggedBlock.x = this.initialBlockPosition.x + deltaX;  // Рухаємо по X
+        } else if (Math.abs(deltaX) < Math.abs(deltaY) && movedCols === 0 && movedRows === 0) {
+            // Якщо рух по осі Y більший, то блок рухається тільки по осі Y
+            this.draggedBlock.x = this.initialBlockPosition.x;  // Фіксуємо X
+            this.draggedBlock.y = this.initialBlockPosition.y + deltaY;  // Рухаємо по Y
         }
     }
+
+
+
+
 
     onBlockDrop() {
         if (!this.draggedBlock) return;
