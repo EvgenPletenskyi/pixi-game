@@ -1,21 +1,24 @@
-const {Container, Sprite, Texture, Graphics} = PIXI;
-import {Block} from './Block.js';
-import {level_1} from '../levels/level_1.js';
-import {spriteMap} from '../sprites/spriteMap.js';
-
+const { Container, Sprite, Texture, Graphics } = PIXI;
+import { Block } from './Block.js';
+import { level_1 } from '../levels/level_1.js';
+import { spriteMap } from '../sprites/spriteMap.js';
 
 export default class Game {
     constructor(app) {
         this.app = app;
         this.levels = [level_1];
         this.gameMatrix = this.createMatrix();
+        this.blocks = [];
         this.currentLevel = 0;
-        // this.blocks = [];
         this.container = new Container();
         this.cellContainer = new Container();
         this.app.stage.addChild(this.container);
         this.cellWidth = 70;
         this.cellHeight = 70;
+
+        // Зберігаємо функції, щоб можна було знімати події
+        this.onPointerMoveHandler = this.onBlockMove.bind(this);
+        this.onPointerUpHandler = this.onBlockDrop.bind(this);
     }
 
     createMatrix() {
@@ -33,6 +36,11 @@ export default class Game {
         this.createBackground();
         this.drawCells();
         this.populateLevel(this.currentLevel);
+
+        this.app.stage.interactive = true;
+
+        // Додаємо обробник події pointerdown на app.view
+        this.app.stage.on('pointerdown', this.onPointerDown.bind(this));
     }
 
     createBackground() {
@@ -68,23 +76,24 @@ export default class Game {
         const level = this.levels[levelIndex];
         if (!level) return;
 
-        level.forEach(({row, col, type}) => {
+        level.forEach(({ row, col, type }) => {
             if (this.gameMatrix[row][col] === 1) {
-                const {id, sprite} = spriteMap[type];
+                const { id, sprite } = spriteMap[type];
                 const texture = Texture.from(sprite);
                 const gameSprite = new Sprite(texture);
 
                 const block = new Block(id);
+                this.blocks.push(block);
                 gameSprite.block = block;
-                // this.blocks.push(block);
+
+                // Додаємо координати до блоку
+                block.col = col;
+                block.row = row;
 
                 if (block.isMovable) {
                     gameSprite.interactive = true;
                     gameSprite.buttonMode = true;
-                    gameSprite
-                        .on('mousedown', this.onBlockGrab.bind(this))
                 }
-
 
                 gameSprite.x = col * this.cellWidth;
                 gameSprite.y = row * this.cellHeight;
@@ -97,46 +106,80 @@ export default class Game {
     }
 
 
-    onBlockGrab(event) {
-        const target = event.target;
+    onPointerDown(event) {
+        const localPos = event.data.getLocalPosition(this.cellContainer);
+        console.log(localPos);
 
-        this.draggedBlock = target;
-        this.initialMousePosition = event.data.getLocalPosition(this.cellContainer);
-        this.initialBlockPosition = {x: target.x, y: target.y};
+        // Отримуємо координати кліка відносно `cellContainer`
+        const col = Math.floor(localPos.x / this.cellWidth);
+        const row = Math.floor(localPos.y / this.cellHeight);
 
-        target.on('mousemove', this.onBlockMove.bind(this));
-        target.on('mouseup', this.onBlockDrop.bind(this));
+        // Перевіряємо, чи координати в межах матриці
+        if (
+            row >= 0 &&
+            row < this.gameMatrix.length &&
+            col >= 0 &&
+            col < this.gameMatrix[0].length
+        ) {
+            const blockId = this.gameMatrix[row][col];
+            console.log(blockId);
+            if (blockId !== 1) {
+                // Знаходимо блок у cellContainer
+                const block = this.cellContainer.children.find(
+                    (child) => {
+                        return (
+                            child.block &&
+                            child.block.id === blockId &&
+                            child.block.col === col &&
+                            child.block.row === row
+                        );
+                    }
+                );
+                console.log(block);
+                if (block && block.block.isMovable) {
+                    const mousePosition = { x: localPos.x, y: localPos.y };
+                    this.onBlockGrab(mousePosition, block);
+                }
+            }
+        }
+    }
+
+
+    onBlockGrab(mousePosition, block) {
+        this.draggedBlock = block;
+
+        // Зберігаємо координати миші та початкові координати блоку
+        this.initialMousePosition = mousePosition;
+        this.initialBlockPosition = { x: block.x, y: block.y };
+
+        // Додаємо обробник для pointermove та pointerup
+        this.app.stage.on('pointermove', this.onPointerMoveHandler);
+        this.app.stage.on('pointerup', this.onPointerUpHandler);
     }
 
     onBlockMove(event) {
+        // Отримуємо нову позицію миші
+        const localPos = event.data.getLocalPosition(this.cellContainer);
 
-        const mousePosition = event.data.getLocalPosition(this.cellContainer);
+        const deltaX = localPos.x - this.initialMousePosition.x;
+        const deltaY = localPos.y - this.initialMousePosition.y;
 
-        // Визначаємо нову позицію блоку
-        const deltaX = mousePosition.x - this.initialMousePosition.x;
-        const deltaY = mousePosition.y - this.initialMousePosition.y;
-
-        // Обмежуємо рух по осі X або Y в залежності від першого руху
+        // Оновлюємо позицію блоку на основі переміщення миші
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            console.log(this.initialBlockPosition.y)
             this.draggedBlock.y = this.initialBlockPosition.y;
             this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
         } else {
             this.draggedBlock.x = this.initialBlockPosition.x;
             this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
         }
-
     }
 
     onBlockDrop() {
-        console.log('done')
         if (!this.draggedBlock) return;
 
-        // Визначаємо клітинку, до якої ближче блок
         const col = Math.round(this.draggedBlock.x / this.cellWidth);
         const row = Math.round(this.draggedBlock.y / this.cellHeight);
 
-        // Перевіряємо, чи клітинка в межах матриці та чи не є "0"
         if (
             row >= 0 &&
             row < this.gameMatrix.length &&
@@ -144,27 +187,30 @@ export default class Game {
             col < this.gameMatrix[0].length &&
             this.gameMatrix[row][col] === 1
         ) {
-            // Закріплюємо блок на новій позиції
+            // Оновлюємо координати блоку
             this.draggedBlock.x = col * this.cellWidth;
             this.draggedBlock.y = row * this.cellHeight;
 
-            // Оновлюємо матрицю
+            // Оновлюємо координати в об'єкті блоку
+            this.draggedBlock.block.col = col;
+            this.draggedBlock.block.row = row;
+
+            // Оновлюємо гру в матриці
             const prevCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
             const prevRow = Math.round(this.initialBlockPosition.y / this.cellHeight);
-            this.gameMatrix[prevRow][prevCol] = 1; // Звільняємо попередню клітинку
-            this.gameMatrix[row][col] = this.draggedBlock.block.id; // Займаємо нову клітинку
+            this.gameMatrix[prevRow][prevCol] = 1;
+            this.gameMatrix[row][col] = this.draggedBlock.block.id;
         } else {
-            // Повертаємо блок на початкову позицію
+            // Якщо блок не на допустимій позиції, повертаємо на початкову позицію
             this.draggedBlock.x = this.initialBlockPosition.x;
             this.draggedBlock.y = this.initialBlockPosition.y;
         }
-        this.draggedBlock.off('mousemove');
-        this.draggedBlock.off('mouseup');
+
+        // Видаляємо обробники подій
+        this.app.stage.off('pointermove', this.onPointerMoveHandler);
+        this.app.stage.off('pointerup', this.onPointerUpHandler);
+
         this.draggedBlock = null;
-        console.log(this.gameMatrix)
-    }
-    onMouseOutside() {
-        console.log('outside')
     }
 
 }
