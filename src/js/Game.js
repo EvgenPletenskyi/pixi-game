@@ -10,6 +10,7 @@ export default class Game {
         this.gameMatrix = this.createMatrix();
         this.blocks = [];
         this.currentLevel = 0;
+        this.mousePosition = {x: 0, y: 0};
         this.container = new Container();
         this.cellContainer = new Container();
         this.app.stage.addChild(this.container);
@@ -40,7 +41,18 @@ export default class Game {
         this.app.stage.interactive = true;
 
         // Додаємо обробник події pointerdown на app.view
+        this.app.stage.on('pointermove', this.onPointerMove.bind(this));
         this.app.stage.on('pointerdown', this.onPointerDown.bind(this));
+    }
+
+    onPointerMove(event) {
+        // Оновлюємо координати миші
+        const localPos = event.data.getLocalPosition(this.cellContainer);
+        this.mousePosition = {x: localPos.x, y: localPos.y};
+
+        if (this.isDragging && this.draggedBlock) {
+            console.log('Mouse is moving:', this.mousePosition);
+        }
     }
 
     createBackground() {
@@ -108,7 +120,7 @@ export default class Game {
 
     onPointerDown(event) {
         const localPos = event.data.getLocalPosition(this.cellContainer);
-        this.initialMousePosition = { x: localPos.x, y: localPos.y };
+        this.initialMousePosition = {x: localPos.x, y: localPos.y};
 
         // Отримуємо координати кліка відносно `cellContainer`
         const col = Math.floor(localPos.x / this.cellWidth);
@@ -153,9 +165,48 @@ export default class Game {
         this.initialBlockPosition = {x: block.x, y: block.y};
 
         // Додаємо обробник для pointermove та pointerup
-        this.app.stage.on('pointermove', this.onPointerMoveHandler);
+        // this.app.stage.on('pointermove', this.onPointerMoveHandler);
         this.app.stage.on('pointerup', this.onPointerUpHandler);
+        this.app.ticker.add(this.updateBlockPosition, this);
     }
+
+    updateBlockPosition() {
+        if (!this.draggedBlock) return;
+
+        // Розраховуємо цільові координати
+        const targetX = this.initialBlockPosition.x + (this.mousePosition.x - this.initialMousePosition.x);
+        const targetY = this.initialBlockPosition.y + (this.mousePosition.y - this.initialMousePosition.y);
+
+        const targetCol = Math.round(targetX / this.cellWidth);
+        const targetRow = Math.round(targetY / this.cellHeight);
+
+        // Обмежуємо рух у межах сітки
+        const clampedCol = Math.max(0, Math.min(targetCol, this.gameMatrix[0].length - 1));
+        const clampedRow = Math.max(0, Math.min(targetRow, this.gameMatrix.length - 1));
+
+        if (this.gameMatrix[clampedRow][clampedCol] !== 1) {
+            return; // Якщо клітинка зайнята або недоступна, зупиняємо рух
+        }
+
+        // Цільові координати в межах клітинки
+        const gridX = clampedCol * this.cellWidth;
+        const gridY = clampedRow * this.cellHeight;
+
+        const prevCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
+        const prevRow = Math.round(this.initialBlockPosition.y / this.cellWidth);
+
+        if (prevCol !== clampedCol || prevRow !== clampedRow) {
+            this.gameMatrix[prevRow][prevCol] = 1;
+        }
+
+        this.draggedBlock.x += (gridX - this.draggedBlock.x);
+        this.draggedBlock.y += (gridY - this.draggedBlock.y);
+
+        this.draggedBlock.block.col = clampedCol;
+        this.draggedBlock.block.row = clampedRow;
+
+    }
+
 
     onBlockMove(event) {
         // Отримуємо нову позицію миші
@@ -178,8 +229,8 @@ export default class Game {
         // Якщо переміщено більше ніж на 1 клітинку по колонках чи рядках
         if (movedCols >= 1 || movedRows >= 1) {
             // Оновлюємо початкову позицію для нових розрахунків
-            this.initialMousePosition = { x: localPos.x, y: localPos.y };
-            this.initialBlockPosition = { x: this.draggedBlock.x, y: this.draggedBlock.y };
+            this.initialMousePosition = {x: localPos.x, y: localPos.y};
+            this.initialBlockPosition = {x: this.draggedBlock.x, y: this.draggedBlock.y};
 
             // Оновлюємо координати
             const col = Math.round(this.draggedBlock.x / this.cellWidth);
@@ -220,11 +271,9 @@ export default class Game {
     }
 
 
-
-
-
     onBlockDrop() {
         if (!this.draggedBlock) return;
+        this.app.ticker.remove(this.updateBlockPosition, this);
 
         const col = Math.round(this.draggedBlock.x / this.cellWidth);
         const row = Math.round(this.draggedBlock.y / this.cellHeight);
