@@ -170,41 +170,69 @@ export default class Game {
         this.app.ticker.add(this.updateBlockPosition, this);
     }
 
+    checkPathClear(startCol, startRow, targetCol, targetRow) {
+        const colStep = targetCol > startCol ? 1 : -1;
+        const rowStep = targetRow > startRow ? 1 : -1;
+
+        // Перевіряємо горизонтальний шлях
+        if (startRow === targetRow) {
+            for (let col = startCol; col !== targetCol; col += colStep) {
+                if (this.gameMatrix[startRow][col] !== 1) {
+                    return false; // Знайдена перешкода
+                }
+            }
+        }
+
+        // Перевіряємо вертикальний шлях
+        if (startCol === targetCol) {
+            for (let row = startRow; row !== targetRow; row += rowStep) {
+                if (this.gameMatrix[row][startCol] !== 1) {
+                    return false; // Знайдена перешкода
+                }
+            }
+        }
+
+        return true; // Шлях вільний
+    }
+
     updateBlockPosition() {
         if (!this.draggedBlock) return;
+
+        const firstCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
+        const firstRow = Math.round(this.initialBlockPosition.y / this.cellHeight);
 
         // Розраховуємо цільові координати
         const targetX = this.initialBlockPosition.x + (this.mousePosition.x - this.initialMousePosition.x);
         const targetY = this.initialBlockPosition.y + (this.mousePosition.y - this.initialMousePosition.y);
 
-        const targetCol = Math.round(targetX / this.cellWidth);
-        const targetRow = Math.round(targetY / this.cellHeight);
+        let targetCol = Math.round(targetX / this.cellWidth);
+        let targetRow = Math.round(targetY / this.cellHeight);
 
         // Обмежуємо рух у межах сітки
         const clampedCol = Math.max(0, Math.min(targetCol, this.gameMatrix[0].length - 1));
         const clampedRow = Math.max(0, Math.min(targetRow, this.gameMatrix.length - 1));
 
-        if (this.gameMatrix[clampedRow][clampedCol] !== 1) {
-            return; // Якщо клітинка зайнята або недоступна, зупиняємо рух
+        if (firstCol !== clampedCol || firstRow !== clampedRow) {
+            this.gameMatrix[firstRow][firstCol] = 1;
+        }
+let prevCol = this.draggedBlock.block.col;
+        let prevRow = this.draggedBlock.block.row;
+        // Перевіряємо, чи клітинка вільна
+        if (this.gameMatrix[clampedRow][clampedCol] !== 1 ||
+            !this.checkPathClear(prevCol, prevRow, clampedCol, clampedRow)) {
+            return; // Якщо клітинка зайнята або шлях заблокований, зупиняємо рух
         }
 
         // Цільові координати в межах клітинки
         const gridX = clampedCol * this.cellWidth;
         const gridY = clampedRow * this.cellHeight;
 
-        const prevCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
-        const prevRow = Math.round(this.initialBlockPosition.y / this.cellWidth);
-
-        if (prevCol !== clampedCol || prevRow !== clampedRow) {
-            this.gameMatrix[prevRow][prevCol] = 1;
-        }
 
         this.draggedBlock.x += (gridX - this.draggedBlock.x);
         this.draggedBlock.y += (gridY - this.draggedBlock.y);
 
         this.draggedBlock.block.col = clampedCol;
         this.draggedBlock.block.row = clampedRow;
-
     }
 
 
