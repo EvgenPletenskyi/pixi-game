@@ -1,12 +1,13 @@
 const {Container, Sprite, Texture, Graphics} = PIXI;
 import {Block} from './Block.js';
 import {level_1} from '../levels/level_1.js';
+import {level_2} from '../levels/level_2.js';
 import {spriteMap} from '../sprites/spriteMap.js';
 
 export default class Game {
     constructor(app) {
         this.app = app;
-        this.levels = [level_1];
+        this.levels = [level_1, level_2];
         this.gameMatrix = this.createMatrix();
         this.blocks = [];
         this.currentLevel = 0;
@@ -25,12 +26,14 @@ export default class Game {
 
     createMatrix() {
         return [
+            [0, 1, 0, 0, 0, 0, 0, 1, 0],
             [1, 1, 1, 0, 0, 0, 1, 1, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 1],
-            [1, 1, 1, 0, 0, 0, 1, 1, 1]
+            [1, 1, 1, 0, 0, 0, 1, 1, 1],
+            [0, 1, 0, 0, 0, 0, 0, 1, 0]
         ];
     }
 
@@ -76,7 +79,7 @@ export default class Game {
             });
         });
         this.cellContainer.x = 197;
-        this.cellContainer.y = 173.5;
+        this.cellContainer.y = 103.5;
         this.container.addChild(this.cellContainer);
     }
 
@@ -113,6 +116,32 @@ export default class Game {
         });
     }
 
+    checkPlacementConditions(row, col, blockId) {
+        // Перевіряємо умови для кожної конкретної клітинки
+        if ((row === 0 && col === 1 && blockId !== 4) ||
+            (row === 0 && col === 7 && blockId !== 5) ||
+            (row === 7 && col === 1 && blockId !== 6) ||
+            (row === 7 && col === 7 && blockId !== 7)) {
+            return false; // Не можна поставити блок
+        }
+        return true; // Блок можна поставити
+    }
+
+    checkAllBlocksInPlace() {
+        const requiredPositions = [
+            { row: 0, col: 1, blockId: 4 },
+            { row: 0, col: 7, blockId: 5 },
+            { row: 7, col: 1, blockId: 6 },
+            { row: 7, col: 7, blockId: 7 }
+        ];
+
+        for (const { row, col, blockId } of requiredPositions) {
+            if (this.gameMatrix[row][col] !== blockId) {
+                return false; // Блок не на своєму місці
+            }
+        }
+        return true; // Усі блоки на своїх місцях
+    }
 
     onPointerDown(event) {
         const localPos = event.data.getLocalPosition(this.cellContainer);
@@ -143,7 +172,9 @@ export default class Game {
                     }
                 );
                 if (block && block.block.isMovable) {
-                    this.onBlockGrab(block);
+                    if (this.checkPlacementConditions(row, col, block.block.id)) {
+                        this.onBlockGrab(block);
+                    }
                 }
             }
         }
@@ -158,9 +189,9 @@ export default class Game {
         this.initialBlockPosition = {x: block.x, y: block.y};
 
         // Додаємо обробник для pointermove та pointerup
-        this.app.stage.on('pointermove', this.onPointerMoveHandler);
+        // this.app.stage.on('pointermove', this.onPointerMoveHandler);
         this.app.stage.on('pointerup', this.onPointerUpHandler);
-        // this.app.ticker.add(this.updateBlockPosition, this);
+        this.app.ticker.add(this.updateBlockPosition, this);
     }
 
     updateBlockPosition() {
@@ -169,34 +200,63 @@ export default class Game {
         let deltaX = this.mousePosition.x - this.initialMousePosition.x;
         let deltaY = this.mousePosition.y - this.initialMousePosition.y;
 
-        // Вираховуємо поточну позицію блоку
         let col = Math.round(this.draggedBlock.x / this.cellWidth);
         let row = Math.round(this.draggedBlock.y / this.cellHeight);
 
         let directionX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0;
         let directionY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
 
-        console.log(this.gameMatrix[row][col + directionX] * this.cellWidth)
+        // if (this.gameMatrix[row][col + directionX] !== 1) {
+        //     if (directionX > 0) {
+        //         col = Math.floor(this.draggedBlock.x / this.cellWidth);
+        //         row = Math.floor(this.draggedBlock.y / this.cellHeight);
+        //     } else if (directionX < 0) {
+        //         col = Math.ceil(this.draggedBlock.x / this.cellWidth);
+        //         row = Math.ceil(this.draggedBlock.y / this.cellHeight);
+        //     }
+        // }
+        //
+        // const nextRow = row + directionY;
+        // console.log('nextRow',nextRow)
+        // console.log(this.gameMatrix[nextRow][col])
+        // if (nextRow >= 0 && nextRow < this.gameMatrix.length && this.gameMatrix[nextRow][col] !== 1) {
+        //     if (directionY > 0) {
+        //         col = Math.ceil(this.draggedBlock.x / this.cellWidth);
+        //         row = Math.ceil(this.draggedBlock.y / this.cellHeight);
+        //     } else if (directionY < 0) {
+        //         col = Math.floor(this.draggedBlock.x / this.cellWidth);
+        //         row = Math.floor(this.draggedBlock.y / this.cellHeight);
+        //     }
+        // }
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][col + directionX] === 1) {
             this.draggedBlock.y = this.initialBlockPosition.y;
             this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
-        } else if (Math.abs(deltaX) < Math.abs(deltaY) && this.gameMatrix[row + directionY][col] === 1) {
-            this.draggedBlock.x = this.initialBlockPosition.x;
-            this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
+        }else if (Math.abs(deltaX) < Math.abs(deltaY)) {
+            // Ensure the row index is within bounds
+            const nextRow = row + directionY;
+            if (nextRow >= 0 && nextRow < this.gameMatrix.length && this.gameMatrix[nextRow][col] === 1) {
+                this.draggedBlock.x = this.initialBlockPosition.x;
+                this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
+            }
         }
-
-        // Якщо попередні значення не встановлені, ініціалізуйте їх
+        // Якщо попередні значення не встановлені, ініціалізуємо їх
         if (this.previousCol === null || this.previousRow === null) {
             this.previousCol = col;
             this.previousRow = row;
         }
 
+        // Перевірка, чи блок не може бути переміщений, якщо він на своєму місці
+        if (!this.checkPlacementConditions(row, col, this.draggedBlock.block.id)) {
+            // Якщо блок не може бути переміщений, повертаємо його на початкову позицію
+            this.draggedBlock.x = this.initialBlockPosition.x;
+            this.draggedBlock.y = this.initialBlockPosition.y;
+            return;
+        }
+
         // Перевіряємо, чи змінилася колонка або рядок
         if (col !== this.previousCol || row !== this.previousRow) {
-            // Оновлюємо матрицю
             this.updateMatrixAndPosition(this.previousRow, this.previousCol, row, col);
-            // Оновлюємо попередні значення
             this.previousCol = col;
             this.previousRow = row;
         }
@@ -213,27 +273,63 @@ export default class Game {
 
     onBlockDrop() {
         if (!this.draggedBlock) return;
+        console.log('drop')
 
-        // Встановлюємо координати блоку на основі останньої позиції в матриці
-        this.draggedBlock.x = this.previousCol * this.cellWidth;
-        this.draggedBlock.y = this.previousRow * this.cellHeight;
+        const col = Math.round(this.draggedBlock.x / this.cellWidth);
+        const row = Math.round(this.draggedBlock.y / this.cellHeight);
+        console.log(row)
 
-        // Оновлюємо координати в об'єкті блоку
-        this.draggedBlock.block.col = this.previousCol;
-        this.draggedBlock.block.row = this.previousRow;
+        // Перевіряємо, чи блок може бути поставлений на новому місці
+        if (!this.checkPlacementConditions(row, col, this.draggedBlock.block.id)) {
+            // Якщо блок не можна поставити, повертаємо його на початкову позицію
+            this.draggedBlock.x = this.initialBlockPosition.x;
+            this.draggedBlock.y = this.initialBlockPosition.y;
+            return;
+        }
 
-        // Оновлюємо гру в матриці
+        this.draggedBlock.x = col * this.cellWidth;
+        this.draggedBlock.y = row * this.cellHeight;
+
+        this.draggedBlock.block.col = col;
+        this.draggedBlock.block.row = row;
+
+        console.log(row)
+
         const prevCol = Math.round(this.initialBlockPosition.x / this.cellWidth);
         const prevRow = Math.round(this.initialBlockPosition.y / this.cellHeight);
         this.gameMatrix[prevRow][prevCol] = 1; // Відновлюємо попередню позицію
-        this.gameMatrix[this.previousRow][this.previousCol] = this.draggedBlock.block.id; // Встановлюємо нову позицію
+        this.gameMatrix[this.previousRow][this.previousCol] = this.draggedBlock.block.id; // Встановлюємо нову позиціюЂЂЂ
+        // Перевірка, чи всі блоки на своїх місцях
+        if (this.checkAllBlocksInPlace()) {
+            console.log('Всі блоки на своїх місцях!');
+            this.loadNextLevel();
+        }
 
-        // Очищення
         this.previousRow = null;
         this.previousCol = null;
         this.draggedBlock = null;
 
-        console.log(this.gameMatrix)
+        console.log(this.gameMatrix);
+    }
+
+    clearCurrentLevel() {
+        // Видаляємо всі блоки з контейнера
+        this.cellContainer.removeChildren();
+        this.blocks = []; // Очищуємо масив блоків
+        this.gameMatrix = this.createMatrix(); // Скидаємо матрицю
+    }
+
+    loadNextLevel() {
+        this.clearCurrentLevel(); // Очищаємо поточний рівень
+        this.currentLevel++; // Переходимо до наступного рівня
+
+        // Перевіряємо, чи є наступний рівень
+        if (this.currentLevel < this.levels.length) {
+            this.populateLevel(this.currentLevel); // Заповнюємо новий рівень
+        } else {
+            console.log('Вітаємо! Ви пройшли всі рівні!');
+            // Тут можна додати логіку для завершення гри або перезапуску
+        }
     }
 
 }

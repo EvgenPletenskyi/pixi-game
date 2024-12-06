@@ -1,9 +1,9 @@
-export const level_1 = [
+export const level_2 = [
     { row: 5, col: 2, type: 'wood' },
     { row: 3, col: 4, type: 'wood' },
-    { row: 2, col: 3, type: 'air' },
+    { row: 1, col: 2, type: 'air' },
     { row: 3, col: 6, type: 'fire' },
     { row: 5, col: 5, type: 'earth' },
-    { row: 6, col: 8, type: 'water' },
+    { row: 5, col: 8, type: 'water' },
     { row: 2, col: 2, type: 'stone' },
 ];
