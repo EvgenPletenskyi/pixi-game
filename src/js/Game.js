@@ -308,22 +308,19 @@ export default class Game {
     }
 
     createPopup(message, onPrevLevel, onNextLevel, onClose) {
-        console.log('popup')
         const popupContainer = new Container();
 
-        // Фон вікна
         const background = new Graphics();
-        background.beginFill(0x000000, 0.7); // Темний напівпрозорий фон
+        background.beginFill(0x000000, 0.7);
         background.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
         background.endFill();
-        background.interactive = true; // Щоб захоплювати події
+        background.interactive = true;
         popupContainer.addChild(background);
 
-        // Вікно
         const popup = new PIXI.Graphics();
         const popupWidth = 400;
         const popupHeight = 200;
-        popup.beginFill(0xffffff); // Білий фон для вікна
+        popup.beginFill(0xffffff);
         popup.drawRoundedRect(
             (this.app.screen.width - popupWidth) / 2,
             (this.app.screen.height - popupHeight) / 2,
@@ -334,7 +331,6 @@ export default class Game {
         popup.endFill();
         popupContainer.addChild(popup);
 
-        // Текст повідомлення
         const style = new TextStyle({
             fontFamily: "Arial",
             fontSize: 24,
@@ -347,8 +343,7 @@ export default class Game {
         text.y = this.app.screen.height / 2 - 20;
         popupContainer.addChild(text);
 
-        if (this.currentLevel != 0) {
-            // Кнопка "Попередній рівень"
+        if (this.currentLevel !== 0) {
             const prevButton = new Graphics();
             prevButton.beginFill(0xff0000); // Червона кнопка
             prevButton.drawRoundedRect(0, 0, 150, 50, 10);
@@ -359,7 +354,6 @@ export default class Game {
             prevButton.buttonMode = true;
             popupContainer.addChild(prevButton);
 
-            // Текст на кнопці "Закрити"
             const prevButtonText = new Text("Previous Level", {
                 fontFamily: "Arial",
                 fontSize: 18,
@@ -371,13 +365,12 @@ export default class Game {
             prevButton.addChild(prevButtonText);
 
             prevButton.on("pointerdown", () => {
-                onPrevLevel(); // Виклик колбека
+                onPrevLevel();
                 this.container.removeChild(popupContainer);
             });
         }
 
-        if (this.currentLevel != this.levels.length - 1) {
-            // Кнопка "Наступний рівень"
+        if (this.currentLevel !== this.levels.length - 1) {
             const nextButton = new Graphics();
             nextButton.beginFill(0x007bff); // Синя кнопка
             nextButton.drawRoundedRect(0, 0, 150, 50, 10);
@@ -388,28 +381,25 @@ export default class Game {
             nextButton.buttonMode = true;
             popupContainer.addChild(nextButton);
 
-            // Текст на кнопці "Наступний рівень"
             const nextButtonText = new Text("Next Level", {
                 fontFamily: "Arial",
                 fontSize: 18,
                 fill: "#ffffff",
             });
             nextButtonText.anchor.set(0.5);
-            nextButtonText.x = nextButton.width / 2; // Центруємо текст
+            nextButtonText.x = nextButton.width / 2;
             nextButtonText.y = nextButton.height / 2;
             nextButton.addChild(nextButtonText);
 
-            // Подія для кнопки "Наступний рівень"
             nextButton.on("pointerdown", () => {
-                onNextLevel(); // Виклик колбека для переходу на наступний рівень
+                onNextLevel();
                 this.container.removeChild(popupContainer);
             });
         }
 
         if (this.currentLevel === this.levels.length - 1) {
-            // Кнопка "Наступний рівень"
             const closeButton = new Graphics();
-            closeButton.beginFill(0x007bff); // Синя кнопка
+            closeButton.beginFill(0x007bff);
             closeButton.drawRoundedRect(0, 0, 150, 50, 10);
             closeButton.endFill();
             closeButton.x = (this.app.screen.width - 150) / 2;
@@ -418,20 +408,18 @@ export default class Game {
             closeButton.buttonMode = true;
             popupContainer.addChild(closeButton);
 
-            // Текст на кнопці "Наступний рівень"
             const closeButtonText = new Text("Close", {
                 fontFamily: "Arial",
                 fontSize: 18,
                 fill: "#ffffff",
             });
             closeButtonText.anchor.set(0.5);
-            closeButtonText.x = closeButton.width / 2; // Центруємо текст
+            closeButtonText.x = closeButton.width / 2;
             closeButtonText.y = closeButton.height / 2;
             closeButton.addChild(closeButtonText);
 
-            // Подія для кнопки "Наступний рівень"
             closeButton.on("pointerdown", () => {
-                onClose(); // Виклик колбека для переходу на наступний рівень
+                onClose();
                 this.container.removeChild(popupContainer);
             });
         }
