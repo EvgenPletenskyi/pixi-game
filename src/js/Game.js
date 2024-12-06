@@ -1,13 +1,14 @@
-const {Container, Sprite, Texture, Graphics} = PIXI;
+const {Container, Sprite, Texture, Graphics, TextStyle, Text} = PIXI;
 import {Block} from './Block.js';
 import {level_1} from '../levels/level_1.js';
 import {level_2} from '../levels/level_2.js';
+import {level_3} from '../levels/level_3.js';
 import {spriteMap} from '../sprites/spriteMap.js';
 
 export default class Game {
     constructor(app) {
         this.app = app;
-        this.levels = [level_1, level_2];
+        this.levels = [level_1, level_2, level_3];
         this.gameMatrix = this.createMatrix();
         this.blocks = [];
         this.currentLevel = 0;
@@ -301,8 +302,13 @@ export default class Game {
         this.gameMatrix[this.previousRow][this.previousCol] = this.draggedBlock.block.id; // Встановлюємо нову позиціюЂЂЂ
         // Перевірка, чи всі блоки на своїх місцях
         if (this.checkAllBlocksInPlace()) {
-            console.log('Всі блоки на своїх місцях!');
-            this.loadNextLevel();
+            this.createPopup("Level Complete!", () => {
+                this.loadPrevLevel();
+            }, () => {
+                this.loadNextLevel();
+            },()=> {
+                window.close();
+            });
         }
 
         this.previousRow = null;
@@ -332,4 +338,148 @@ export default class Game {
         }
     }
 
+    loadPrevLevel() {
+        this.clearCurrentLevel(); // Очищаємо поточний рівень
+        this.currentLevel--; // Переходимо до наступного рівня
+
+        // Перевіряємо, чи є наступний рівень
+        if (this.currentLevel < this.levels.length) {
+            this.populateLevel(this.currentLevel); // Заповнюємо новий рівень
+        } else {
+            console.log('Вітаємо! Ви пройшли всі рівні!');
+            // Тут можна додати логіку для завершення гри або перезапуску
+        }
+    }
+    createPopup(message, onPrevLevel, onNextLevel , onClose) {
+        console.log('popup')
+        const popupContainer = new Container();
+
+        // Фон вікна
+        const background = new Graphics();
+        background.beginFill(0x000000, 0.7); // Темний напівпрозорий фон
+        background.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
+        background.endFill();
+        background.interactive = true; // Щоб захоплювати події
+        popupContainer.addChild(background);
+
+        // Вікно
+        const popup = new PIXI.Graphics();
+        const popupWidth = 400;
+        const popupHeight = 200;
+        popup.beginFill(0xffffff); // Білий фон для вікна
+        popup.drawRoundedRect(
+            (this.app.screen.width - popupWidth) / 2,
+            (this.app.screen.height - popupHeight) / 2,
+            popupWidth,
+            popupHeight,
+            20
+        );
+        popup.endFill();
+        popupContainer.addChild(popup);
+
+        // Текст повідомлення
+        const style = new TextStyle({
+            fontFamily: "Arial",
+            fontSize: 24,
+            fill: "#000000",
+            align: "center",
+        });
+        const text = new Text(message, style);
+        text.anchor.set(0.5);
+        text.x = this.app.screen.width / 2;
+        text.y = this.app.screen.height / 2 - 20;
+        popupContainer.addChild(text);
+
+        if (this.currentLevel != 0){
+            // Кнопка "Попередній рівень"
+            const prevButton = new Graphics();
+            prevButton.beginFill(0xff0000); // Червона кнопка
+            prevButton.drawRoundedRect(0, 0, 150, 50, 10);
+            prevButton.endFill();
+            prevButton.x = (this.app.screen.width - 150) / 2;
+            prevButton.y = (this.app.screen.height + popupHeight) / 2 - 100;
+            prevButton.interactive = true;
+            prevButton.buttonMode = true;
+            popupContainer.addChild(prevButton);
+
+            // Текст на кнопці "Закрити"
+            const prevButtonText = new Text("Previous Level", {
+                fontFamily: "Arial",
+                fontSize: 18,
+                fill: "#ffffff",
+            });
+            prevButtonText.anchor.set(0.5);
+            prevButtonText.x = prevButton.width / 2;
+            prevButtonText.y = prevButton.height / 2;
+            prevButton.addChild(prevButtonText);
+
+            prevButton.on("pointerdown", () => {
+                onPrevLevel(); // Виклик колбека
+                this.container.removeChild(popupContainer);
+            });
+        }
+
+        if (this.currentLevel != this.levels.length - 1){
+            // Кнопка "Наступний рівень"
+            const nextButton = new Graphics();
+            nextButton.beginFill(0x007bff); // Синя кнопка
+            nextButton.drawRoundedRect(0, 0, 150, 50, 10);
+            nextButton.endFill();
+            nextButton.x = (this.app.screen.width - 150) / 2;
+            nextButton.y = (this.app.screen.height + popupHeight) / 2 - 40;
+            nextButton.interactive = true;
+            nextButton.buttonMode = true;
+            popupContainer.addChild(nextButton);
+
+            // Текст на кнопці "Наступний рівень"
+            const nextButtonText = new Text("Next Level", {
+                fontFamily: "Arial",
+                fontSize: 18,
+                fill: "#ffffff",
+            });
+            nextButtonText.anchor.set(0.5);
+            nextButtonText.x = nextButton.width / 2; // Центруємо текст
+            nextButtonText.y = nextButton.height / 2;
+            nextButton.addChild(nextButtonText);
+
+            // Подія для кнопки "Наступний рівень"
+            nextButton.on("pointerdown", () => {
+                onNextLevel(); // Виклик колбека для переходу на наступний рівень
+                this.container.removeChild(popupContainer);
+            });
+        }
+
+        if (this.currentLevel === this.levels.length - 1){
+            // Кнопка "Наступний рівень"
+            const closeButton = new Graphics();
+            closeButton.beginFill(0x007bff); // Синя кнопка
+            closeButton.drawRoundedRect(0, 0, 150, 50, 10);
+            closeButton.endFill();
+            closeButton.x = (this.app.screen.width - 150) / 2;
+            closeButton.y = (this.app.screen.height + popupHeight) / 2 - 40;
+            closeButton.interactive = true;
+            closeButton.buttonMode = true;
+            popupContainer.addChild(closeButton);
+
+            // Текст на кнопці "Наступний рівень"
+            const closeButtonText = new Text("Close", {
+                fontFamily: "Arial",
+                fontSize: 18,
+                fill: "#ffffff",
+            });
+            closeButtonText.anchor.set(0.5);
+            closeButtonText.x = closeButton.width / 2; // Центруємо текст
+            closeButtonText.y = closeButton.height / 2;
+            closeButton.addChild(closeButtonText);
+
+            // Подія для кнопки "Наступний рівень"
+            closeButton.on("pointerdown", () => {
+                onClose(); // Виклик колбека для переходу на наступний рівень
+                this.container.removeChild(popupContainer);
+            });
+        }
+
+
+        this.container.addChild(popupContainer);
+    }
 }
