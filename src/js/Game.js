@@ -180,11 +180,11 @@ export default class Game {
 
     onBlockGrab(block) {
         this.draggedBlock = block;
-        this.initialBlockPosition = { x: block.x, y: block.y };
+        this.initialBlockPosition = {x: block.x, y: block.y};
         this.app.stage.on('pointerup', this.onPointerUpHandler);
 
         let elapsed = 0;
-        const interval = 30;
+        const interval = 25;
         let isMoving = false;
 
         this.updateTicker = () => {
@@ -201,20 +201,47 @@ export default class Game {
             let col = Math.ceil(this.initialBlockPosition.x / this.cellWidth);
             let row = Math.ceil(this.initialBlockPosition.y / this.cellHeight);
 
-            if (Math.abs(targetCol - initialCol) > 1 || Math.abs(targetRow - initialRow) > 1 || isMoving) {
-                isMoving = true;
+            if (this.mousePosition.x >= this.draggedBlock.x &&
+                this.mousePosition.y >= this.draggedBlock.y &&
+                this.mousePosition.x <= this.draggedBlock.x + this.cellWidth &&
+                this.mousePosition.y <= this.draggedBlock.y + this.cellHeight &&
+                !isMoving
+            ) {
 
+                if (Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][col + directionX] === 1) {
+                    this.draggedBlock.y = this.initialBlockPosition.y;
+                    this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
+                } else if (Math.abs(deltaX) < Math.abs(deltaY)) {
+                    const nextRow = row + directionY;
+                    if (nextRow >= 0 && nextRow < this.gameMatrix.length && this.gameMatrix[nextRow][col] === 1) {
+                        this.draggedBlock.x = this.initialBlockPosition.x;
+                        this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
+                    }
+                }
+
+            } else {
+                isMoving = true;
                 if (elapsed >= interval) {
                     elapsed -= interval;
 
-                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0 && this.gameMatrix[row][col + directionX] === 1) {
+                    // Плавне наближення до цілого значення
+                    if (this.draggedBlock.x % this.cellWidth !== 0) {
+                        this.draggedBlock.x = Math.round(this.draggedBlock.x / 10) * 10;
+                    }
+                    // Плавне наближення до цілого значення
+                    if (this.draggedBlock.y % this.cellHeight !== 0) {
+                        this.draggedBlock.y = Math.round(this.draggedBlock.y / 10) * 10;
+                    }
+
+                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0 && this.gameMatrix[row][col + directionX] === 1 && col + directionX < this.gameMatrix[0].length && col + directionX >= 0) {
                         this.draggedBlock.x += (targetCol > col) ? 10 : -10;
                         this.gameMatrix[row][col] = 1;
+                        console.log(this.draggedBlock.x)
                         if (this.draggedBlock.x % this.cellWidth === 0) {
                             this.initialBlockPosition.x = this.draggedBlock.x;
                             this.initialMousePosition.x += (targetCol > col) ? this.cellWidth : -this.cellWidth;
                         }
-                    } else if (targetRow !== row && this.draggedBlock.x % this.cellWidth === 0 && this.gameMatrix[row + directionY][col] === 1) {
+                    } else if (targetRow !== row && this.draggedBlock.x % this.cellWidth === 0 && this.gameMatrix[row + directionY][col] === 1 && row + directionY < this.gameMatrix.length && row + directionY >= 0) {
                         this.draggedBlock.y += (targetRow > row) ? 10 : -10;
                         this.gameMatrix[row][col] = 1;
                         if (this.draggedBlock.y % this.cellHeight === 0) {
@@ -240,7 +267,6 @@ export default class Game {
         let row = Math.round(this.draggedBlock.y / this.cellHeight);
 
 
-
         let directionX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0;
         let directionY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
 
@@ -251,7 +277,7 @@ export default class Game {
 
         if (directionX > 0) {
             fullCol = Math.floor(this.draggedBlock.x / this.cellWidth)
-        }else {
+        } else {
             fullCol = Math.ceil(this.draggedBlock.x / this.cellWidth)
             fullRow = Math.ceil(this.draggedBlock.y / this.cellHeight)
         }
