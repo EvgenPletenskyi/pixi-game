@@ -180,11 +180,53 @@ export default class Game {
 
     onBlockGrab(block) {
         this.draggedBlock = block;
-
-        this.initialBlockPosition = {x: block.x, y: block.y};
-
+        this.initialBlockPosition = { x: block.x, y: block.y };
         this.app.stage.on('pointerup', this.onPointerUpHandler);
-        this.app.ticker.add(this.updateBlockPosition, this);
+
+        let elapsed = 0;
+        const interval = 30;
+        let isMoving = false;
+
+        this.updateTicker = () => {
+            elapsed += this.app.ticker.elapsedMS;
+
+            let targetCol = Math.floor(this.mousePosition.x / this.cellWidth);
+            let targetRow = Math.floor(this.mousePosition.y / this.cellHeight);
+            let deltaX = this.mousePosition.x - this.initialMousePosition.x;
+            let deltaY = this.mousePosition.y - this.initialMousePosition.y;
+            let directionX = Math.sign(deltaX);
+            let directionY = Math.sign(deltaY);
+            let initialCol = Math.ceil(this.initialBlockPosition.x / this.cellWidth);
+            let initialRow = Math.ceil(this.initialBlockPosition.y / this.cellHeight);
+            let col = Math.ceil(this.initialBlockPosition.x / this.cellWidth);
+            let row = Math.ceil(this.initialBlockPosition.y / this.cellHeight);
+
+            if (Math.abs(targetCol - initialCol) > 1 || Math.abs(targetRow - initialRow) > 1 || isMoving) {
+                isMoving = true;
+
+                if (elapsed >= interval) {
+                    elapsed -= interval;
+
+                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0 && this.gameMatrix[row][col + directionX] === 1) {
+                        this.draggedBlock.x += (targetCol > col) ? 10 : -10;
+                        this.gameMatrix[row][col] = 1;
+                        if (this.draggedBlock.x % this.cellWidth === 0) {
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x += (targetCol > col) ? this.cellWidth : -this.cellWidth;
+                        }
+                    } else if (targetRow !== row && this.draggedBlock.x % this.cellWidth === 0 && this.gameMatrix[row + directionY][col] === 1) {
+                        this.draggedBlock.y += (targetRow > row) ? 10 : -10;
+                        this.gameMatrix[row][col] = 1;
+                        if (this.draggedBlock.y % this.cellHeight === 0) {
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y += (targetRow > row) ? this.cellHeight : -this.cellHeight;
+                        }
+                    }
+                }
+            }
+        };
+
+        this.app.ticker.add(this.updateTicker);
     }
 
     updateBlockPosition() {
@@ -193,11 +235,27 @@ export default class Game {
         let deltaX = this.mousePosition.x - this.initialMousePosition.x;
         let deltaY = this.mousePosition.y - this.initialMousePosition.y;
 
+
         let col = Math.round(this.draggedBlock.x / this.cellWidth);
         let row = Math.round(this.draggedBlock.y / this.cellHeight);
 
+
+
         let directionX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0;
         let directionY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
+
+        console.log(directionX)
+
+        let fullCol;
+        let fullRow;
+
+        if (directionX > 0) {
+            fullCol = Math.floor(this.draggedBlock.x / this.cellWidth)
+        }else {
+            fullCol = Math.ceil(this.draggedBlock.x / this.cellWidth)
+            fullRow = Math.ceil(this.draggedBlock.y / this.cellHeight)
+        }
+        console.log(fullCol)
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][col + directionX] === 1) {
             this.draggedBlock.y = this.initialBlockPosition.y;
@@ -209,23 +267,23 @@ export default class Game {
                 this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
             }
         }
-
-        if (this.previousCol === null || this.previousRow === null) {
-            this.previousCol = col;
-            this.previousRow = row;
-        }
-
-        if (!this.checkPlacementConditions(row, col, this.draggedBlock.block.id)) {
-            this.draggedBlock.x = this.initialBlockPosition.x;
-            this.draggedBlock.y = this.initialBlockPosition.y;
-            return;
-        }
-
-        if (col !== this.previousCol || row !== this.previousRow) {
-            this.updateMatrixAndPosition(this.previousRow, this.previousCol, row, col);
-            this.previousCol = col;
-            this.previousRow = row;
-        }
+        //
+        // if (this.previousCol === null || this.previousRow === null) {
+        //     this.previousCol = col;
+        //     this.previousRow = row;
+        // }
+        //
+        // if (!this.checkPlacementConditions(row, col, this.draggedBlock.block.id)) {
+        //     this.draggedBlock.x = this.initialBlockPosition.x;
+        //     this.draggedBlock.y = this.initialBlockPosition.y;
+        //     return;
+        // }
+        //
+        // if (col !== this.previousCol || row !== this.previousRow) {
+        //     this.updateMatrixAndPosition(this.previousRow, this.previousCol, row, col);
+        //     this.previousCol = col;
+        //     this.previousRow = row;
+        // }
 
     }
 
@@ -237,7 +295,10 @@ export default class Game {
 
 
     onBlockDrop() {
+        console.log(this.gameMatrix)
         if (!this.draggedBlock) return;
+
+        this.app.ticker.remove(this.updateTicker);
 
         const col = Math.round(this.draggedBlock.x / this.cellWidth);
         const row = Math.round(this.draggedBlock.y / this.cellHeight);
