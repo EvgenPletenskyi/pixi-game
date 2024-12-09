@@ -22,7 +22,7 @@ export default class Game {
         this.previousRow = null;
 
         this.onPointerUpHandler = this.onBlockDrop.bind(this);
-        this.onPointerMoveHandler = this.updateBlockPosition.bind(this);
+        // this.onPointerMoveHandler = this.updateBlockPosition.bind(this);
     }
 
     createMatrix() {
@@ -48,6 +48,7 @@ export default class Game {
         // Додаємо обробник події pointerdown на app.view
         this.app.stage.on('pointermove', this.onPointerMove.bind(this));
         this.app.stage.on('pointerdown', this.onPointerDown.bind(this));
+        this.app.stage.on('pointerup', this.onPointerUpHandler);
     }
 
     onPointerMove(event) {
@@ -169,9 +170,7 @@ export default class Game {
                     }
                 );
                 if (block && block.block.isMovable) {
-                    if (this.checkPlacementConditions(row, col, block.block.id)) {
                         this.onBlockGrab(block);
-                    }
                 }
             }
         }
@@ -181,7 +180,6 @@ export default class Game {
     onBlockGrab(block) {
         this.draggedBlock = block;
         this.initialBlockPosition = {x: block.x, y: block.y};
-        this.app.stage.on('pointerup', this.onPointerUpHandler);
 
         let elapsed = 0;
         const interval = 25;
@@ -200,6 +198,21 @@ export default class Game {
             let initialRow = Math.ceil(this.initialBlockPosition.y / this.cellHeight);
             let col = Math.ceil(this.initialBlockPosition.x / this.cellWidth);
             let row = Math.ceil(this.initialBlockPosition.y / this.cellHeight);
+            let draggedCol;
+            let draggedRow;
+            if (directionX > 0) {
+                draggedCol = Math.floor(this.draggedBlock.x / this.cellWidth);
+            }else {
+                draggedCol = Math.ceil(this.draggedBlock.x / this.cellWidth);
+            }
+
+            if (directionY > 0) {
+                console.log(this.draggedBlock.y)
+                draggedRow = Math.floor(this.draggedBlock.y / this.cellHeight);
+                console.log(draggedRow)
+            }else {
+                draggedRow = Math.ceil(this.draggedBlock.y / this.cellHeight);
+            }
 
             if (this.mousePosition.x >= this.draggedBlock.x &&
                 this.mousePosition.y >= this.draggedBlock.y &&
@@ -207,19 +220,33 @@ export default class Game {
                 this.mousePosition.y <= this.draggedBlock.y + this.cellHeight &&
                 !isMoving
             ) {
-
-                if (Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][col + directionX] === 1) {
-                    this.draggedBlock.y = this.initialBlockPosition.y;
-                    this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
-                } else if (Math.abs(deltaX) < Math.abs(deltaY)) {
-                    const nextRow = row + directionY;
-                    if (nextRow >= 0 && nextRow < this.gameMatrix.length && this.gameMatrix[nextRow][col] === 1) {
-                        this.draggedBlock.x = this.initialBlockPosition.x;
-                        this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
+                if (Math.abs(deltaX) - Math.abs(deltaY) > 5 && this.gameMatrix[row][col + directionX] === 1) {
+                    if (this.gameMatrix[row][draggedCol + directionX] === 1 && draggedCol >= 0 && draggedCol + directionX <= this.gameMatrix[0].length - 1) {
+                        this.draggedBlock.y = this.initialBlockPosition.y;
+                        this.draggedBlock.x = Math.round(this.initialBlockPosition.x + deltaX);
+                        if (Math.abs(draggedCol - col) === 1) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.x = draggedCol * this.cellWidth;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                        }
                     }
                 }
+                if (Math.abs(deltaX) - Math.abs(deltaY) < 5 && this.gameMatrix[row + directionY][col] === 1) {
+                    if (this.gameMatrix[draggedRow + directionY][col] === 1 && draggedRow >= 0 && draggedRow + directionY <= this.gameMatrix.length - 1) {
+                        this.draggedBlock.x = this.initialBlockPosition.x;
+                        this.draggedBlock.y = Math.round(this.initialBlockPosition.y + deltaY);
+                        if (Math.abs(draggedRow - row) === 1) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.y = draggedRow * this.cellHeight;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                        }
 
-            } else {
+                    }
+                }
+            } else  {
+                console.log('meemememeeme')
                 isMoving = true;
                 if (elapsed >= interval) {
                     elapsed -= interval;
@@ -233,7 +260,7 @@ export default class Game {
                         this.draggedBlock.y = Math.round(this.draggedBlock.y / 10) * 10;
                     }
 
-                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0 && this.gameMatrix[row][col + directionX] === 1 && col + directionX < this.gameMatrix[0].length && col + directionX >= 0) {
+                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0  && this.gameMatrix[row][col + directionX] === 1 && col + directionX < this.gameMatrix[0].length && col + directionX >= 0) {
                         this.draggedBlock.x += (targetCol > col) ? 10 : -10;
                         this.gameMatrix[row][col] = 1;
                         console.log(this.draggedBlock.x)
@@ -255,70 +282,6 @@ export default class Game {
 
         this.app.ticker.add(this.updateTicker);
     }
-
-    updateBlockPosition() {
-        if (!this.draggedBlock) return;
-
-        let deltaX = this.mousePosition.x - this.initialMousePosition.x;
-        let deltaY = this.mousePosition.y - this.initialMousePosition.y;
-
-
-        let col = Math.round(this.draggedBlock.x / this.cellWidth);
-        let row = Math.round(this.draggedBlock.y / this.cellHeight);
-
-
-        let directionX = deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0;
-        let directionY = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
-
-        console.log(directionX)
-
-        let fullCol;
-        let fullRow;
-
-        if (directionX > 0) {
-            fullCol = Math.floor(this.draggedBlock.x / this.cellWidth)
-        } else {
-            fullCol = Math.ceil(this.draggedBlock.x / this.cellWidth)
-            fullRow = Math.ceil(this.draggedBlock.y / this.cellHeight)
-        }
-        console.log(fullCol)
-
-        if (Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][col + directionX] === 1) {
-            this.draggedBlock.y = this.initialBlockPosition.y;
-            this.draggedBlock.x = this.initialBlockPosition.x + deltaX;
-        } else if (Math.abs(deltaX) < Math.abs(deltaY)) {
-            const nextRow = row + directionY;
-            if (nextRow >= 0 && nextRow < this.gameMatrix.length && this.gameMatrix[nextRow][col] === 1) {
-                this.draggedBlock.x = this.initialBlockPosition.x;
-                this.draggedBlock.y = this.initialBlockPosition.y + deltaY;
-            }
-        }
-        //
-        // if (this.previousCol === null || this.previousRow === null) {
-        //     this.previousCol = col;
-        //     this.previousRow = row;
-        // }
-        //
-        // if (!this.checkPlacementConditions(row, col, this.draggedBlock.block.id)) {
-        //     this.draggedBlock.x = this.initialBlockPosition.x;
-        //     this.draggedBlock.y = this.initialBlockPosition.y;
-        //     return;
-        // }
-        //
-        // if (col !== this.previousCol || row !== this.previousRow) {
-        //     this.updateMatrixAndPosition(this.previousRow, this.previousCol, row, col);
-        //     this.previousCol = col;
-        //     this.previousRow = row;
-        // }
-
-    }
-
-    updateMatrixAndPosition(row, col, nextRow, nextCol) {
-        this.gameMatrix[row][col] = 1;
-        this.gameMatrix[nextRow][nextCol] = this.draggedBlock.block.id;
-
-    }
-
 
     onBlockDrop() {
         console.log(this.gameMatrix)
