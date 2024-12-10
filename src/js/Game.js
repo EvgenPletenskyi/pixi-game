@@ -205,7 +205,19 @@ export default class Game {
             let nextRow = row + directionY;
             let newRow = Math.round(this.draggedBlock.y / this.cellHeight);
             let newCol = Math.round(this.draggedBlock.x / this.cellWidth);
-
+            if (targetCol >= this.gameMatrix[0].length) {
+                targetCol = this.gameMatrix[0].length - 1;
+            } else if (targetCol < 0) {
+                targetCol = 0;
+            }
+            if (targetRow >= this.gameMatrix.length) {
+                targetRow = this.gameMatrix.length - 1;
+            } else if (targetRow < 0) {
+                targetRow = 0;
+            }
+            console.log(this.gameMatrix[targetRow][col])
+            console.log(targetRow)
+            console.log(col)
             if (this.mousePosition.x >= this.draggedBlock.x &&
                 this.mousePosition.y >= this.draggedBlock.y &&
                 this.mousePosition.x <= this.draggedBlock.x + this.cellWidth &&
@@ -240,7 +252,7 @@ export default class Game {
                             movingX = false;
                         }
                     }
-                } else if(Math.abs(deltaY) > Math.abs(deltaX)) {
+                } else if (Math.abs(deltaY) > Math.abs(deltaX)) {
                     if (elapsed >= interval) {
                         elapsed -= interval;
                         movingY = true;
@@ -267,7 +279,7 @@ export default class Game {
                         }
                     }
                 }
-            }else if (this.gameMatrix[row][nextCol] !== 1  && Math.abs(deltaX) > Math.abs(deltaY) && targetRow === row) {
+            } else if (this.gameMatrix[row][nextCol] !== 1 && Math.abs(deltaX) > Math.abs(deltaY) && this.gameMatrix[row][targetCol] === 1 && targetRow === row) {
                 console.log('------------------')
                 if (elapsed >= interval) {
                     elapsed -= interval;
@@ -285,7 +297,7 @@ export default class Game {
                         draggedCol = true
                     }
                 }
-            }else if (this.gameMatrix[nextRow][col] !== 1  && Math.abs(deltaX) < Math.abs(deltaY) && targetCol === col) {
+            } else if (this.gameMatrix[nextRow][col] !== 1 && Math.abs(deltaX) < Math.abs(deltaY) && this.gameMatrix[targetRow][col] === 1 && targetCol === col) {
                 console.log('+++++++++++++++++')
                 if (elapsed >= interval) {
                     elapsed -= interval;
@@ -302,9 +314,9 @@ export default class Game {
                         draggedRow = true
                     }
                 }
-            } else if (this.gameMatrix[row][nextCol] === 1 || this.gameMatrix[nextRow][col] === 1 && (draggedCol || draggedRow))  {
+            } else if (this.gameMatrix[row][nextCol] === 1 || this.gameMatrix[nextRow][col] === 1 && (draggedCol || draggedRow)) {
                 isMoving = true;
-                dragged =  true;
+                dragged = true;
                 if (elapsed >= interval) {
                     elapsed -= interval;
 
@@ -316,7 +328,7 @@ export default class Game {
                     if (this.draggedBlock.y % this.cellHeight !== 0) {
                         this.draggedBlock.y = Math.round(this.draggedBlock.y / 10) * 10;
                     }
-                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0  && this.gameMatrix[row][col + directionX] === 1 && col + directionX < this.gameMatrix[0].length && col + directionX >= 0) {
+                    if (targetCol !== col && this.draggedBlock.y % this.cellHeight === 0 && this.gameMatrix[row][col + directionX] === 1 && col + directionX < this.gameMatrix[0].length && col + directionX >= 0) {
                         this.draggedBlock.x += (targetCol > col) ? 10 : -10;
                         this.gameMatrix[row][col] = 1;
                         if (this.draggedBlock.x % this.cellWidth === 0) {
@@ -334,6 +346,7 @@ export default class Game {
                     }
                 }
             } else {
+                console.log('end')
                 this.draggedBlock.x = this.initialBlockPosition.x
                 this.draggedBlock.y = this.initialBlockPosition.y
             }
