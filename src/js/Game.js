@@ -242,7 +242,6 @@ export default class Game {
                 }
 
             }else if (this.gameMatrix[row][nextCol] !== 1 && !draggedRow) {
-                console.log('dssd')
                 console.log(nextRow)
                 if (this.gameMatrix[nextRow][col] === 1 && nextRow >= 0 && nextRow <= this.gameMatrix.length - 1 && this.draggedBlock.x % this.cellWidth === 0) {
                     this.draggedBlock.y = Math.round(this.initialBlockPosition.y + deltaY);
@@ -257,10 +256,13 @@ export default class Game {
                     draggedCol = true
                 }
             }else if (this.gameMatrix[nextRow][col] !== 1 && !draggedCol) {
+                console.log('popopopo')
                 if (this.gameMatrix[row][nextCol] === 1 && nextCol >= 0 && nextCol <= this.gameMatrix[0].length - 1 && this.draggedBlock.y % this.cellWidth === 0) {
-                    this.draggedBlock.x = Math.round(this.initialBlockPosition.y + deltaX);
+                    console.log(deltaX)
+                    this.draggedBlock.x = Math.round(this.initialBlockPosition.x + deltaX);
 
-                    if (Math.round(Math.abs(deltaY))>= 70 && this.gameMatrix[row][nextCol] === 1) {
+                    if (Math.round(Math.abs(deltaX))>= 70 && this.gameMatrix[row][nextCol] === 1) {
+                        console.log('ratatatatatata')
                         this.gameMatrix[row][col] = 1;
                         this.draggedBlock.x = targetCol * this.cellHeight;
                         this.initialBlockPosition.x = this.draggedBlock.x;
