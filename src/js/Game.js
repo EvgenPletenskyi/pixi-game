@@ -182,7 +182,7 @@ export default class Game {
         this.initialBlockPosition = {x: block.x, y: block.y};
 
         let elapsed = 0;
-        const interval = 30;
+        const interval = 15;
         let isMoving = false;
         let draggedCol = false;
         let draggedRow = false;
@@ -206,7 +206,6 @@ export default class Game {
             let newRow = Math.round(this.draggedBlock.y / this.cellHeight);
             let newCol = Math.round(this.draggedBlock.x / this.cellWidth);
 
-
             if (this.mousePosition.x >= this.draggedBlock.x &&
                 this.mousePosition.y >= this.draggedBlock.y &&
                 this.mousePosition.x <= this.draggedBlock.x + this.cellWidth &&
@@ -217,76 +216,91 @@ export default class Game {
 
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
                     movingX = true
-                    if (this.gameMatrix[row][nextCol] === 1 && nextCol >= 0 && nextCol <= this.gameMatrix[0].length - 1) {
-                        this.draggedBlock.y = this.initialBlockPosition.y;
-                        this.draggedBlock.x = Math.round(this.initialBlockPosition.x + deltaX);
-                    }
-                    if (col !== newCol && this.draggedBlock.x - newCol * this.cellWidth < 1 && directionX < 0) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.x = nextCol * this.cellWidth;
-                        this.initialBlockPosition.x = this.draggedBlock.x;
-                        this.initialMousePosition.x = this.mousePosition.x;
-                        this.initialBlockPosition.y = this.draggedBlock.y;
-                        this.initialMousePosition.y = this.mousePosition.y;
-                        movingX = false;
-                    }else if (col !== newCol && newCol * this.cellWidth - this.draggedBlock.x < 1 && directionX > 0) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.x = nextCol * this.cellWidth;
-                        this.initialBlockPosition.x = this.draggedBlock.x;
-                        this.initialMousePosition.x = this.mousePosition.x;
-                        this.initialBlockPosition.y = this.draggedBlock.y;
-                        this.initialMousePosition.y = this.mousePosition.y;
-                        movingX = false;
+                    if (elapsed >= interval) {
+                        elapsed -= interval;
+                        if (this.gameMatrix[row][nextCol] === 1 && nextCol >= 0 && nextCol <= this.gameMatrix[0].length - 1) {
+                            this.draggedBlock.y = this.initialBlockPosition.y;
+                            this.draggedBlock.x = this.initialBlockPosition.x + Math.floor(deltaX);
+                        }
+                        if (col !== newCol && this.draggedBlock.x - newCol * this.cellWidth < 1 && directionX < 0) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.x = nextCol * this.cellWidth;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                            movingX = false;
+                        } else if (col !== newCol && newCol * this.cellWidth - this.draggedBlock.x < 1 && directionX > 0) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.x = nextCol * this.cellWidth;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                            movingX = false;
+                        }
                     }
                 } else if(Math.abs(deltaY) > Math.abs(deltaX)) {
-                    movingY = true;
-                    if (this.gameMatrix[nextRow][col] === 1 && nextRow >= 0 && nextRow <= this.gameMatrix.length - 1) {
-                        this.draggedBlock.x = this.initialBlockPosition.x;
-                        this.draggedBlock.y = Math.round(this.initialBlockPosition.y + deltaY);
-                    }
-                    if (row !== newRow && this.draggedBlock.y - newRow * this.cellHeight < 1 && directionY < 0) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.y = targetRow * this.cellHeight;
-                        this.initialBlockPosition.x = this.draggedBlock.x;
-                        this.initialMousePosition.x = this.mousePosition.x;
-                        this.initialBlockPosition.y = this.draggedBlock.y;
-                        this.initialMousePosition.y = this.mousePosition.y;
-                        movingY = false;
-                    }else if (row !== newRow && newRow * this.cellHeight - this.draggedBlock.y < 1 && directionY > 0) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.y = targetRow * this.cellHeight;
-                        this.initialBlockPosition.x = this.draggedBlock.x;
-                        this.initialMousePosition.x = this.mousePosition.x;
-                        this.initialBlockPosition.y = this.draggedBlock.y;
-                        this.initialMousePosition.y = this.mousePosition.y;
-                        movingY = false;
+                    if (elapsed >= interval) {
+                        elapsed -= interval;
+                        movingY = true;
+                        if (this.gameMatrix[nextRow][col] === 1 && nextRow >= 0 && nextRow <= this.gameMatrix.length - 1) {
+                            this.draggedBlock.x = this.initialBlockPosition.x;
+                            this.draggedBlock.y = this.initialBlockPosition.y + Math.floor(deltaY);
+                        }
+                        if (row !== newRow && this.draggedBlock.y - newRow * this.cellHeight < 1 && directionY < 0) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.y = targetRow * this.cellHeight;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                            movingY = false;
+                        } else if (row !== newRow && newRow * this.cellHeight - this.draggedBlock.y < 1 && directionY > 0) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.y = targetRow * this.cellHeight;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                            movingY = false;
+                        }
                     }
                 }
-            }else if (this.gameMatrix[row][nextCol] !== 1  && Math.abs(deltaX) > Math.abs(deltaY)) {
-                if (this.gameMatrix[nextRow][col] === 1 && nextRow >= 0 && nextRow <= this.gameMatrix.length - 1 && this.draggedBlock.x % this.cellWidth === 0) {
-                    this.draggedBlock.y = Math.round(this.initialBlockPosition.y + deltaY);
+            }else if (this.gameMatrix[row][nextCol] !== 1  && Math.abs(deltaX) > Math.abs(deltaY) && targetRow === row) {
+                console.log('------------------')
+                if (elapsed >= interval) {
+                    elapsed -= interval;
+                    console.log('sfdmasdf')
+                    if (this.gameMatrix[nextRow][col] === 1 && nextRow >= 0 && nextRow <= this.gameMatrix.length - 1 && this.draggedBlock.x % this.cellWidth === 0) {
+                        this.draggedBlock.y = this.initialBlockPosition.y + Math.floor(deltaY);
 
-                    if (Math.round(Math.abs(deltaY))>= 70 && this.gameMatrix[nextRow][col] === 1) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.y = targetRow * this.cellHeight;
-                        this.initialBlockPosition.y = this.draggedBlock.y;
-                        this.initialMousePosition.y = this.mousePosition.y;
-                        draggedCol = false;
+                        if (Math.round(Math.abs(deltaY)) >= 70 && this.gameMatrix[nextRow][col] === 1) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.y = targetRow * this.cellHeight;
+                            this.initialBlockPosition.y = this.draggedBlock.y;
+                            this.initialMousePosition.y = this.mousePosition.y;
+                            draggedCol = false;
+                        }
+                        draggedCol = true
                     }
-                    draggedCol = true
                 }
-            }else if (this.gameMatrix[nextRow][col] !== 1  && Math.abs(deltaX) < Math.abs(deltaY)) {
-                if (this.gameMatrix[row][nextCol] === 1 && nextCol >= 0 && nextCol <= this.gameMatrix[0].length - 1 && this.draggedBlock.y % this.cellWidth === 0) {
-                    this.draggedBlock.x = Math.round(this.initialBlockPosition.x + deltaX);
+            }else if (this.gameMatrix[nextRow][col] !== 1  && Math.abs(deltaX) < Math.abs(deltaY) && targetCol === col) {
+                console.log('+++++++++++++++++')
+                if (elapsed >= interval) {
+                    elapsed -= interval;
+                    if (this.gameMatrix[row][nextCol] === 1 && nextCol >= 0 && nextCol <= this.gameMatrix[0].length - 1 && this.draggedBlock.y % this.cellWidth === 0) {
+                        this.draggedBlock.x = this.initialBlockPosition.x + Math.floor(deltaX);
 
-                    if (Math.round(Math.abs(deltaX))>= 70 && this.gameMatrix[row][nextCol] === 1) {
-                        this.gameMatrix[row][col] = 1;
-                        this.draggedBlock.x = targetCol * this.cellHeight;
-                        this.initialBlockPosition.x = this.draggedBlock.x;
-                        this.initialMousePosition.x = this.mousePosition.x;
-                        draggedRow = false;
+                        if (Math.round(Math.abs(deltaX)) >= 70 && this.gameMatrix[row][nextCol] === 1) {
+                            this.gameMatrix[row][col] = 1;
+                            this.draggedBlock.x = targetCol * this.cellHeight;
+                            this.initialBlockPosition.x = this.draggedBlock.x;
+                            this.initialMousePosition.x = this.mousePosition.x;
+                            draggedRow = false;
+                        }
+                        draggedRow = true
                     }
-                    draggedRow = true
                 }
             } else if (this.gameMatrix[row][nextCol] === 1 || this.gameMatrix[nextRow][col] === 1 && (draggedCol || draggedRow))  {
                 isMoving = true;
@@ -319,6 +333,9 @@ export default class Game {
                         }
                     }
                 }
+            } else {
+                this.draggedBlock.x = this.initialBlockPosition.x
+                this.draggedBlock.y = this.initialBlockPosition.y
             }
         };
 
