@@ -19,17 +19,8 @@ export default class Game {
         this.startPosition = new PIXI.Point();
         this.draggedBlockOffset = new PIXI.Point();
         this.newMousePosition = new PIXI.Point();
-        this.previousDraggedBlock = new PIXI.Point();
-        this.directionX = 0;
-        this.directionY = 0;
         this.previousRow = null;
         this.previousCol = null;
-        this.previousMouse = new PIXI.Point();
-        this.previousDirectionY = null;
-        this.row = 0;
-        this.col = 0;
-        this.isUpdating = false;
-
 
         // Запускаємо ап тікер
         this.app.ticker.add(this.update.bind(this));
@@ -59,6 +50,7 @@ export default class Game {
             this.dragging = false;
             this.dragAxis = null;
             this.alignRectToGrid();
+            console.log(this.gameMatrix)
         });
 
         this.app.stage.on('pointerupoutside', () => {
@@ -68,85 +60,79 @@ export default class Game {
 
         this.app.stage.on('pointermove', (event) => {
             if (!this.dragging) return;
-            this.isUpdating = true;
 
             const globalPosition = event.data.global;
 
 
             this.mouse.copyFrom(this.cellContainer.toLocal(globalPosition));
 
-            this.directionX = (this.mouse.x - this.previousMouse.x >= 0) ? 1 : -1;
-            this.directionY = (this.mouse.y - this.previousMouse.y >= 0) ? 1 : -1;
-
-            this.previousMouse.copyFrom(this.mouse);
-
-            let row;
-            let col;
-            if (this.directionX > 0) {
-                col = Math.floor(this.draggedBlock.x / this.cellSize);
-            } else {
-                col = Math.ceil(this.draggedBlock.x / this.cellSize);
-            }
-
-            if (this.directionY > 0) {
-                row = Math.floor(this.draggedBlock.y / this.cellSize);
-            } else {
-                row = Math.ceil(this.draggedBlock.y / this.cellSize);
-            }
-
-            if (this.previousCol !== col && this.previousCol) {
-                console.log('ppppppppp')
-                if (this.gameMatrix[row][col + this.directionX] === 1) {
-                    this.dragAxis = 'x';
-                } else {
-                    this.dragAxis = 'y';
-                }
-            }else if (this.previousRow !== row && this.previousRow) {
-                console.log('qqqqqqqqq')
-                if (this.gameMatrix[row + this.directionY][col] === 1) {
-                    this.dragAxis = 'y';
-                }else {
-                    this.dragAxis = 'x';
-                }
-            }
-
             if (!this.dragAxis || this.almostCenter()) {
-                this.isUpdating = true;
                 this.alignRectToGrid();
-
-                this.previousRow = row;
-                this.previousCol = col;
 
                 let delta = this.newMousePosition.subtract(this.draggedBlock);
 
                 if (Math.abs(delta.x) - Math.abs(delta.y) > 5) {
-                    console.log('dddd')
-                    if (this.gameMatrix[row][col + this.directionX] === 1) {
-                        this.dragAxis = 'x';
-                    } else {
-                        this.dragAxis = 'y';
-                    }
+                    this.dragAxis = 'x';
                 } else if (Math.abs(delta.y) - Math.abs(delta.x) > 5) {
-                    console.log(']]]]]]]]]]]')
-                    if (this.gameMatrix[row + this.directionY][col] === 1) {
-                        this.dragAxis = 'y';
-                    }else {
-                        this.dragAxis = 'x';
-                    }
+                    this.dragAxis = 'y';
                 }
             }
-            this.isUpdating = false;
         });
     }
 
     update(delta) {
-        if (this.dragging && !this.isUpdating) {
-            this.isUpdating = true;
+        if (this.dragging) {
             this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
             const distanceX = Math.abs(this.newMousePosition.x - this.draggedBlock.x);
             const distanceY = Math.abs(this.newMousePosition.y - this.draggedBlock.y);
-            const speed = 10;
+            const speed = 12;
             const offset = 5; // Порогове значення для автоматичного вирівнювання
+
+            let col = Math.floor(this.draggedBlock.x / this.cellSize);
+            let row = Math.floor(this.draggedBlock.y / this.cellSize);
+
+            // Перевіряємо, чи блок досяг нової клітинки
+            if (this.draggedBlock.x % this.cellSize === 0 || this.draggedBlock.y % this.cellSize === 0) {
+                // Оновлюємо колонки та ряди, якщо блок досяг нової клітинки
+                if (this.draggedBlock.x % this.cellSize === 0) {
+                    col = this.draggedBlock.x / this.cellSize;
+                }
+                if (this.draggedBlock.y % this.cellSize === 0) {
+                    row = this.draggedBlock.y / this.cellSize;
+                    // console.log('newROW', row);
+                }
+
+                // Перевірка на сусідні клітинки
+                if (this.dragAxis === 'x') {
+                    if (this.newMousePosition.x > this.draggedBlock.x) {
+                        if (this.gameMatrix[row][col + 1] !== 1) {
+                            this.draggedBlock.x = col * this.cellSize;
+                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
+                            return;
+                        }
+                    }else if (this.newMousePosition.x < this.draggedBlock.x) {
+                        if (this.gameMatrix[row][Math.ceil(this.draggedBlock.x / this.cellSize) - 1] !== 1) {
+                            this.draggedBlock.x = col * this.cellSize;
+                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
+                            return;
+                        }
+                    }
+                } else if (this.dragAxis === 'y') {
+                    if (this.newMousePosition.y > this.draggedBlock.y) {
+                        if (this.gameMatrix[row + 1][col] !== 1) {
+                            this.draggedBlock.y = row * this.cellSize;
+                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
+                            return;
+                        }
+                    }else if (this.newMousePosition.y < this.draggedBlock.y) {
+                        if (this.gameMatrix[Math.ceil(this.draggedBlock.y / this.cellSize) - 1][col] !== 1) {
+                            this.draggedBlock.y = row * this.cellSize;
+                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
+                            return;
+                        }
+                    }
+                }
+            }
 
             if (this.dragAxis === 'x') {
                 if (distanceX > this.cellSize / 2) {
@@ -155,6 +141,7 @@ export default class Game {
                     this.draggedBlock.x = this.newMousePosition.x;
                 }
             } else if (this.dragAxis === 'y') {
+                console.log('memememememem')
                 if (distanceY > this.cellSize / 2) {
                     this.draggedBlock.y += speed * Math.sign(this.newMousePosition.y - this.draggedBlock.y);
                 } else {
@@ -162,23 +149,16 @@ export default class Game {
                 }
             }
 
-            // // Автоматичне вирівнювання блоку в межах +- 10 пікселів від центру клітинки
-            // const nearestGridX = Math.round(this.draggedBlock.x / this.cellSize) * this.cellSize;
-            // const nearestGridY = Math.round(this.draggedBlock.y / this.cellSize) * this.cellSize;
-            //
-            // if (Math.abs(this.draggedBlock.x - nearestGridX) < offset) {
-            //     this.draggedBlock.x = nearestGridX;
-            // }
-            // if (Math.abs(this.draggedBlock.y - nearestGridY) < offset) {
-            //     this.draggedBlock.y = nearestGridY;
-            // }
-            // if  (this.draggedBlock.y % this.cellSize ===0) {
-            //     this.previousDraggedBlock.copyFrom(this.draggedBlock);
-            // }
-            // if  (this.draggedBlock.x % this.cellSize === 0) {
-            //     this.previousDraggedBlock.copyFrom(this.draggedBlock);
-            // }
-            this.isUpdating = false;
+            // Автоматичне вирівнювання блоку в межах +- 10 пікселів від центру клітинки
+            const nearestGridX = Math.round(this.draggedBlock.x / this.cellSize) * this.cellSize;
+            const nearestGridY = Math.round(this.draggedBlock.y / this.cellSize) * this.cellSize;
+
+            if (Math.abs(this.draggedBlock.x - nearestGridX) < offset) {
+                this.draggedBlock.x = nearestGridX;
+            }
+            if (Math.abs(this.draggedBlock.y - nearestGridY) < offset) {
+                this.draggedBlock.y = nearestGridY;
+            }
         }
     }
 
@@ -230,8 +210,7 @@ export default class Game {
                     gameSprite.buttonMode = true;
                     gameSprite
                         .on('pointerdown', this.onBlockGrab.bind(this))
-                        .on('pointerout', () => {
-                        });
+                        .on('pointerout', () => {});
                 }
 
                 gameSprite.x = col * this.cellSize;
@@ -251,8 +230,6 @@ export default class Game {
 
         this.startPosition.copyFrom(this.cellContainer.toLocal(event.data.global));
         this.draggedBlockOffset = this.startPosition.subtract(target.position);
-
-        this.previousDraggedBlock.copyFrom(this.draggedBlock.position);
     }
 
     alignRectToGrid() {
