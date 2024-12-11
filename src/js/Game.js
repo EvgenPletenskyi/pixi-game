@@ -21,6 +21,7 @@ export default class Game {
         this.newMousePosition = new PIXI.Point();
         this.previousRow = null;
         this.previousCol = null;
+        this.previousBlockPos = {row: -1, col: -1};
 
         // Запускаємо ап тікер
         this.app.ticker.add(this.update.bind(this));
@@ -50,6 +51,17 @@ export default class Game {
             this.dragging = false;
             this.dragAxis = null;
             this.alignRectToGrid();
+
+            let col = Math.floor(this.draggedBlock.x / this.cellSize);
+            let row = Math.floor(this.draggedBlock.y / this.cellSize);
+            if (this.draggedBlock.block.row !== row || this.draggedBlock.block.col !== col) { // Оновлюємо матрицю
+                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1; // Стара позиція
+                this.gameMatrix[row][col] = this.draggedBlock.block.id; // Нова позиція
+                // Оновлюємо позицію блоку
+                this.draggedBlock.block.row = row;
+                this.draggedBlock.block.col = col;
+            }
+
             console.log(this.gameMatrix)
         });
 
@@ -71,6 +83,8 @@ export default class Game {
 
                 let delta = this.newMousePosition.subtract(this.draggedBlock);
 
+                console.log(delta)
+
                 if (Math.abs(delta.x) - Math.abs(delta.y) > 5) {
                     this.dragAxis = 'x';
                 } else if (Math.abs(delta.y) - Math.abs(delta.x) > 5) {
@@ -83,9 +97,11 @@ export default class Game {
     update(delta) {
         if (this.dragging) {
             this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
-            const distanceX = Math.abs(this.newMousePosition.x - this.draggedBlock.x);
-            const distanceY = Math.abs(this.newMousePosition.y - this.draggedBlock.y);
-            const speed = 12;
+            let distanceX = Math.abs(this.newMousePosition.x - this.draggedBlock.x);
+            let distanceY = Math.abs(this.newMousePosition.y - this.draggedBlock.y);
+
+            console.log('distanceY', distanceY)
+            const speed = 24;
             const offset = 5; // Порогове значення для автоматичного вирівнювання
 
             let col = Math.floor(this.draggedBlock.x / this.cellSize);
@@ -96,53 +112,35 @@ export default class Game {
                 // Оновлюємо колонки та ряди, якщо блок досяг нової клітинки
                 if (this.draggedBlock.x % this.cellSize === 0) {
                     col = this.draggedBlock.x / this.cellSize;
+                    this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                    this.gameMatrix[this.draggedBlock.block.row][col] = this.draggedBlock.block.id;
+                    this.draggedBlock.block.col = col;
                 }
                 if (this.draggedBlock.y % this.cellSize === 0) {
                     row = this.draggedBlock.y / this.cellSize;
-                    // console.log('newROW', row);
-                }
-
-                // Перевірка на сусідні клітинки
-                if (this.dragAxis === 'x') {
-                    if (this.newMousePosition.x > this.draggedBlock.x) {
-                        if (this.gameMatrix[row][col + 1] !== 1) {
-                            this.draggedBlock.x = col * this.cellSize;
-                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
-                            return;
-                        }
-                    }else if (this.newMousePosition.x < this.draggedBlock.x) {
-                        if (this.gameMatrix[row][Math.ceil(this.draggedBlock.x / this.cellSize) - 1] !== 1) {
-                            this.draggedBlock.x = col * this.cellSize;
-                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
-                            return;
-                        }
-                    }
-                } else if (this.dragAxis === 'y') {
-                    if (this.newMousePosition.y > this.draggedBlock.y) {
-                        if (this.gameMatrix[row + 1][col] !== 1) {
-                            this.draggedBlock.y = row * this.cellSize;
-                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
-                            return;
-                        }
-                    }else if (this.newMousePosition.y < this.draggedBlock.y) {
-                        if (this.gameMatrix[Math.ceil(this.draggedBlock.y / this.cellSize) - 1][col] !== 1) {
-                            this.draggedBlock.y = row * this.cellSize;
-                            this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
-                            return;
-                        }
-                    }
+                    this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                    this.gameMatrix[row][this.draggedBlock.block.col] = this.draggedBlock.block.id;
+                    this.draggedBlock.block.row = row;
                 }
             }
-
+            let nextCol = (this.newMousePosition.x > this.draggedBlock.x) ? col + 1 : (this.newMousePosition.x < this.draggedBlock.x) ? Math.ceil(this.draggedBlock.x / this.cellSize) - 1 : col;
+            let nextRow = (this.newMousePosition.y > this.draggedBlock.y) ? row + 1 : (this.newMousePosition.y < this.draggedBlock.y) ? Math.ceil(this.draggedBlock.y / this.cellSize) - 1 : row;
             if (this.dragAxis === 'x') {
-                if (distanceX > this.cellSize / 2) {
+                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                if (this.gameMatrix[row][nextCol] !== 1) {
+                    this.newMousePosition.x = this.draggedBlock.x;
+                    return;
+                } else if (distanceX > this.cellSize / 2) {
                     this.draggedBlock.x += speed * Math.sign(this.newMousePosition.x - this.draggedBlock.x);
                 } else {
                     this.draggedBlock.x = this.newMousePosition.x;
                 }
             } else if (this.dragAxis === 'y') {
-                console.log('memememememem')
-                if (distanceY > this.cellSize / 2) {
+                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                if (this.gameMatrix[nextRow][col] !== 1) {
+                    this.newMousePosition.y = this.draggedBlock.y;
+                    return;
+                } else if (distanceY > this.cellSize / 2) {
                     this.draggedBlock.y += speed * Math.sign(this.newMousePosition.y - this.draggedBlock.y);
                 } else {
                     this.draggedBlock.y = this.newMousePosition.y;
@@ -210,7 +208,8 @@ export default class Game {
                     gameSprite.buttonMode = true;
                     gameSprite
                         .on('pointerdown', this.onBlockGrab.bind(this))
-                        .on('pointerout', () => {});
+                        .on('pointerout', () => {
+                        });
                 }
 
                 gameSprite.x = col * this.cellSize;
@@ -226,7 +225,11 @@ export default class Game {
         this.draggedBlock = target;
         this.dragging = true;
 
-        const globalPosition = event.data.global;
+        let col = Math.floor(this.draggedBlock.x / this.cellSize);
+        let row = Math.floor(this.draggedBlock.y / this.cellSize);
+
+        this.draggedBlock.block.col = col;
+        this.draggedBlock.block.row = row;
 
         this.startPosition.copyFrom(this.cellContainer.toLocal(event.data.global));
         this.draggedBlockOffset = this.startPosition.subtract(target.position);
