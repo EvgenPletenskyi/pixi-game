@@ -12,4 +12,3 @@ document.getElementById("game-container").appendChild(app.view);
 
 
 const game = new Game(app);
-game.init();

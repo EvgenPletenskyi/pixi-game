@@ -10,7 +10,7 @@ export default class Game {
     constructor(app) {
         this.app = app;
         this.levels = [level_1, level_2, level_3];
-        this.gameMatrix = this.createMatrix();
+        this.initialStates = this.levels.map(level => level.map(row => [...row]));
         this.currentLevel = 0;
         this.container = new Container();
         this.cellContainer = new Container();
@@ -24,20 +24,14 @@ export default class Game {
         this.newMousePosition = new PIXI.Point();
         this.popup = null;
 
+        this.gameMatrix = this.createMatrix();
         this.app.ticker.add(this.update.bind(this));
+
+        this.init();
     }
 
     createMatrix() {
-        return [
-            [0, '*', 0, 0, 0, 0, 0, '*', 0],
-            [1, 1, 1, 0, 0, 0, 1, 1, 1],
-            [1, 1, 1, 1, 0, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 0, 1, 1, 1, 1],
-            [1, 1, 1, 0, 0, 0, 1, 1, 1],
-            [0, '*', 0, 0, 0, 0, 0, '*', 0]
-        ];
+        return this.initialStates[this.currentLevel].map(row => [...row]);
     }
 
 
@@ -109,7 +103,7 @@ export default class Game {
 
             const distance = this.newMousePosition.subtract(this.draggedBlock);
             const speed = 24;
-            const offset = 5; // Threshold value for automatic alignment
+            const offset = 10; // Threshold value for automatic alignment
             let col = Math.floor(this.draggedBlock.x / this.cellSize);
             let row = Math.floor(this.draggedBlock.y / this.cellSize);
 
@@ -233,32 +227,33 @@ export default class Game {
     populateLevel(levelIndex) {
         const level = this.levels[levelIndex];
         if (!level) return;
-
-        level.forEach(({row, col, type}) => {
-            if (this.gameMatrix[row][col] === 1) {
-                const {id, sprite} = spriteMap[type];
-                const texture = Texture.from(sprite);
-                const gameSprite = new Sprite(texture);
-
-                const block = new Block(id);
-                gameSprite.block = block;
-
-                if (block.isMovable) {
-                    gameSprite.interactive = true;
-                    gameSprite.buttonMode = true;
-                    gameSprite
-                        .on('pointerdown', this.onBlockGrab.bind(this))
-                        .on('pointerout', () => {
-                        });
+        console.log(level);
+        level.forEach((row, rowIndex) => {
+            row.forEach((col, colIndex) => {
+                if (col !== 0 && col !== '*' && col !== 1) {
+                    const spriteEntry = Object.values(spriteMap).find(item => item.id === col);
+                    if (spriteEntry) {
+                        const {id, sprite} = spriteEntry;
+                        const texture = Texture.from(sprite);
+                        const gameSprite = new Sprite(texture);
+                        const block = new Block(id);
+                        gameSprite.block = block;
+                        if (block.isMovable) {
+                            gameSprite.interactive = true;
+                            gameSprite.buttonMode = true;
+                            gameSprite.on('pointerdown', this.onBlockGrab.bind(this)).on('pointerout', () => {
+                            });
+                        }
+                        gameSprite.x = colIndex * this.cellSize;
+                        gameSprite.y = rowIndex * this.cellSize;
+                        this.cellContainer.addChild(gameSprite);
+                        this.gameMatrix[rowIndex][colIndex] = block.id;
+                    }
                 }
-
-                gameSprite.x = col * this.cellSize;
-                gameSprite.y = row * this.cellSize;
-                this.cellContainer.addChild(gameSprite);
-                this.gameMatrix[row][col] = block.id;
-            }
+            });
         });
     }
+
 
     onBlockGrab(event) {
         const target = event.currentTarget;
@@ -318,9 +313,8 @@ export default class Game {
         this.currentLevel++;
 
         if (this.currentLevel < this.levels.length) {
+            this.gameMatrix = this.createMatrix();
             this.populateLevel(this.currentLevel);
-        } else {
-            console.log('Вітаємо! Ви пройшли всі рівні!');
         }
     }
 
@@ -329,6 +323,8 @@ export default class Game {
         this.currentLevel--;
 
         if (this.currentLevel < this.levels.length) {
+            this.gameMatrix = this.createMatrix();
+            console.log(this.currentLevel)
             this.populateLevel(this.currentLevel);
         }
     }

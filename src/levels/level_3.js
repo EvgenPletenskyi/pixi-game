@@ -1,11 +1,10 @@
 export const level_3 = [
-    { row: 4, col: 1, type: 'stone' },
-    { row: 3, col: 4, type: 'wood' },
-    { row: 4, col: 2, type: 'wood' },
-    { row: 4, col: 0, type: 'air' },
-    { row: 5, col: 2, type: 'fire' },
-    { row: 1, col: 8, type: 'earth' },
-    { row: 5, col: 8, type: 'water' },
-    { row: 2, col: 2, type: 'stone' },
-    { row: 4, col: 4, type: 'stone' },
+    [0, '*', 0, 0, 0, 0, 0, '*', 0],
+    [7, 1, 1, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 1, 0, 3, 1, 1, 1],
+    [1, 1, 1, 2, 5, 1, 1, 2, 1],
+    [1, 1, 1, 3, 6, 1, 3, 1, 1],
+    [1, 1, 2, 1, 0, 4, 1, 2, 1],
+    [1, 3, 1, 0, 0, 0, 1, 1, 1],
+    [0, '*', 0, 0, 0, 0, 0, '*', 0]
 ];
