@@ -4,10 +4,6 @@ export class Block {
         this.isMovable = this.checkForMovable();
     }
 
-    canMove() {
-        return this.isMovable;
-    }
-
     checkForMovable() {
         if (this.id !== 2) {
             return true;
