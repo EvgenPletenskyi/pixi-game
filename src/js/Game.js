@@ -1,12 +1,15 @@
-const {Container, Sprite, Texture, Graphics} = PIXI;
+const {Container, Sprite, Texture, Graphics, TextStyle, Text} = PIXI;
 import {Block} from './Block.js';
+import {Popup} from './Popup.js';
 import {level_1} from '../levels/level_1.js';
+import {level_2} from '../levels/level_2.js';
+import {level_3} from '../levels/level_3.js';
 import {spriteMap} from '../sprites/spriteMap.js';
 
 export default class Game {
     constructor(app) {
         this.app = app;
-        this.levels = [level_1];
+        this.levels = [level_1, level_2, level_3];
         this.gameMatrix = this.createMatrix();
         this.currentLevel = 0;
         this.container = new Container();
@@ -19,26 +22,24 @@ export default class Game {
         this.startPosition = new PIXI.Point();
         this.draggedBlockOffset = new PIXI.Point();
         this.newMousePosition = new PIXI.Point();
-        this.previousRow = null;
-        this.previousCol = null;
-        this.previousBlockPos = {row: -1, col: -1};
+        this.popup = null;
 
-        // Запускаємо ап тікер
         this.app.ticker.add(this.update.bind(this));
     }
 
     createMatrix() {
         return [
-            [0, 1, 0, 0, 0, 0, 0, 1, 0],
+            [0, '*', 0, 0, 0, 0, 0, '*', 0],
             [1, 1, 1, 0, 0, 0, 1, 1, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 1],
             [1, 1, 1, 0, 0, 0, 1, 1, 1],
-            [0, 1, 0, 0, 0, 0, 0, 1, 0]
+            [0, '*', 0, 0, 0, 0, 0, '*', 0]
         ];
     }
+
 
     init() {
         this.createBackground();
@@ -55,14 +56,24 @@ export default class Game {
             let col = Math.floor(this.draggedBlock.x / this.cellSize);
             let row = Math.floor(this.draggedBlock.y / this.cellSize);
             if (this.draggedBlock.block.row !== row || this.draggedBlock.block.col !== col) {
-                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1; // Стара позиція
-                this.gameMatrix[row][col] = this.draggedBlock.block.id; // Нова позиція
-                // Оновлюємо позицію блоку
+                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                this.gameMatrix[row][col] = this.draggedBlock.block.id;
+
                 this.draggedBlock.block.row = row;
                 this.draggedBlock.block.col = col;
             }
 
             console.log(this.gameMatrix)
+
+            if (this.checkAllBlocksInPlace()) {
+                this.createPopup("Level Complete!", () => {
+                    this.loadPrevLevel();
+                }, () => {
+                    this.loadNextLevel();
+                }, () => {
+                    window.close();
+                }, this.currentLevel, this.levels);
+            }
         });
 
         this.app.stage.on('pointerupoutside', () => {
@@ -83,8 +94,6 @@ export default class Game {
 
                 let delta = this.newMousePosition.subtract(this.draggedBlock);
 
-                console.log(delta)
-
                 if (Math.abs(delta.x) - Math.abs(delta.y) > 5) {
                     this.dragAxis = 'x';
                 } else if (Math.abs(delta.y) - Math.abs(delta.x) > 5) {
@@ -100,7 +109,6 @@ export default class Game {
             let distanceX = Math.abs(this.newMousePosition.x - this.draggedBlock.x);
             let distanceY = Math.abs(this.newMousePosition.y - this.draggedBlock.y);
 
-            console.log('distanceY', distanceY)
             const speed = 24;
             const offset = 5; // Порогове значення для автоматичного вирівнювання
 
@@ -123,19 +131,43 @@ export default class Game {
                     this.draggedBlock.block.row = row;
                 }
             }
+
             let nextCol = (this.newMousePosition.x > this.draggedBlock.x) ? col + 1 : (this.newMousePosition.x < this.draggedBlock.x) ? Math.ceil(this.draggedBlock.x / this.cellSize) - 1 : col;
             let nextRow = (this.newMousePosition.y > this.draggedBlock.y) ? row + 1 : (this.newMousePosition.y < this.draggedBlock.y) ? Math.ceil(this.draggedBlock.y / this.cellSize) - 1 : row;
+
+            if (nextRow < 0 || nextRow >= this.gameMatrix.length) {
+                return;
+            }
+
             if (this.dragAxis === 'x') {
+                if (nextCol > this.gameMatrix[0].length - 1) {
+                    this.draggedBlock.x = (this.gameMatrix[0].length - 1) * this.cellSize
+                }
+                if (nextCol < 0) {
+                    this.draggedBlock.x = this.cellSize;
+                }
+                if (this.gameMatrix[row][nextCol] !== 1) {
+                    this.draggedBlock.x = this.draggedBlock.block.col * this.cellSize
+                }
                 if (this.gameMatrix[row][nextCol] !== 1 && nextCol !== this.draggedBlock.block.col) {
                     this.newMousePosition.x = this.draggedBlock.x;
                     return;
                 } else if (distanceX > this.cellSize / 2) {
                     this.draggedBlock.x += speed * Math.sign(this.newMousePosition.x - this.draggedBlock.x);
                 } else {
-                    this.draggedBlock.x = this.newMousePosition.x;
+                    this.draggedBlock.x = Math.round(this.newMousePosition.x / 2) * 2;
                 }
             } else if (this.dragAxis === 'y') {
-                if (this.gameMatrix[nextRow][col] !== 1 && nextRow !== this. draggedBlock.block.row) {
+                if (nextRow > this.gameMatrix.length - 1) {
+                    this.draggedBlock.y = (this.gameMatrix.length -1) * this.cellSize;
+                }
+                if (nextRow < 0) {
+                    this.draggedBlock.y = this.cellSize;
+                }
+                if (!this.isWinnerCell(nextRow, col, this.draggedBlock.block.id) && this.gameMatrix[nextRow][col] !== 1) {
+                    this.draggedBlock.y = this.draggedBlock.block.row * this.cellSize
+                }
+                if (!this.isWinnerCell(nextRow, col, this.draggedBlock.block.id) && this.gameMatrix[nextRow][col] !== 1 && nextRow !== this.draggedBlock.block.row) {
                     this.newMousePosition.y = this.draggedBlock.y;
                     return;
                 } else if (distanceY > this.cellSize / 2) {
@@ -145,7 +177,7 @@ export default class Game {
                 }
             }
 
-            // Автоматичне вирівнювання блоку в межах +- 10 пікселів від центру клітинки
+            // Автоматичне вирівнювання блоку в межах +- 10 пікселів
             const nearestGridX = Math.round(this.draggedBlock.x / this.cellSize) * this.cellSize;
             const nearestGridY = Math.round(this.draggedBlock.y / this.cellSize) * this.cellSize;
 
@@ -158,6 +190,17 @@ export default class Game {
         }
     }
 
+    isWinnerCell(row, col, blockId) {
+        if (this.gameMatrix[row][col] === '*') {
+            if ((row === 0 && col === 1 && blockId === 4) ||
+                (row === 0 && col === 7 && blockId === 5) ||
+                (row === 7 && col === 1 && blockId === 6) ||
+                (row === 7 && col === 7 && blockId === 7)) {
+                return true;
+            }
+            return false;
+        }
+    };
 
     createBackground() {
         const backgroundTexture = Texture.from(spriteMap.background.sprite);
@@ -247,5 +290,52 @@ export default class Game {
             return Math.abs(this.draggedBlock.y) % this.cellSize < offset;
         }
         return false;
+    }
+
+    checkAllBlocksInPlace() {
+        const requiredPositions = [
+            {row: 0, col: 1, blockId: 4},
+            {row: 0, col: 7, blockId: 5},
+            {row: 7, col: 1, blockId: 6},
+            {row: 7, col: 7, blockId: 7}
+        ];
+
+        for (const {row, col, blockId} of requiredPositions) {
+            if (this.gameMatrix[row][col] !== blockId) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    clearCurrentLevel() {
+        this.container.removeChild(this.popup.getPopupContainer());
+        this.cellContainer.removeChildren();
+        this.gameMatrix = this.createMatrix();
+    }
+
+    loadNextLevel() {
+        this.clearCurrentLevel();
+        this.currentLevel++;
+
+        if (this.currentLevel < this.levels.length) {
+            this.populateLevel(this.currentLevel);
+        } else {
+            console.log('Вітаємо! Ви пройшли всі рівні!');
+        }
+    }
+
+    loadPrevLevel() {
+        this.clearCurrentLevel();
+        this.currentLevel--;
+
+        if (this.currentLevel < this.levels.length) {
+            this.populateLevel(this.currentLevel);
+        }
+    }
+
+    createPopup(message, onPrevLevel, onNextLevel, onClose, currentLevel, levels) {
+        this.popup = new Popup(message, onPrevLevel, onNextLevel, onClose, currentLevel, levels);
+        this.container.addChild(this.popup.getPopupContainer());
     }
 }
