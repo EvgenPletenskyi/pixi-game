@@ -1,3 +1,5 @@
+"use strict";
+
 const { Application } = PIXI;
 import Game from './Game.js';
 

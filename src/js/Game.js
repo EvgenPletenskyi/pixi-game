@@ -23,6 +23,7 @@ export default class Game {
         this.draggedBlockOffset = new PIXI.Point();
         this.newMousePosition = new PIXI.Point();
         this.popup = null;
+        this.levelCompleted = false
 
         this.gameMatrix = this.createMatrix();
         this.app.ticker.add(this.update.bind(this));
@@ -39,6 +40,8 @@ export default class Game {
         this.createBackground();
         this.drawCells();
         this.populateLevel(this.currentLevel);
+        this.initTimer();
+        this.startTimer();
 
         this.app.stage.interactive = true;
 
@@ -50,29 +53,53 @@ export default class Game {
         });
     }
 
+    initTimer() {
+        this.timerDuration = 60;
+        this.remainingTime = this.timerDuration;
+        this.timerText = new Text('', new TextStyle({fontSize: 24, fill: '#ffffff'}));
+        this.timerText.x = this.app.screen.width - 100;
+        this.timerText.y = 10;
+        this.container.addChild(this.timerText);
+        this.remainingTime = this.timerDuration;
+        this.timerText.text = `Time: ${this.remainingTime}`;
+        this.timesOut = false;
+    }
+
+    startTimer() {
+        this.remainingTime = this.timerDuration;
+        this.timerText.text = `Time: ${this.remainingTime}`;
+    }
+
     onPointerUp(event) {
         this.dragging = false;
         this.dragAxis = null;
         this.alignRectToGrid();
 
-        let col = Math.floor(this.draggedBlock.x / this.cellSize);
-        let row = Math.floor(this.draggedBlock.y / this.cellSize);
-        if (this.draggedBlock.block.row !== row || this.draggedBlock.block.col !== col) {
-            this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
-            this.gameMatrix[row][col] = this.draggedBlock.block.id;
+        if (this.draggedBlock) {
+            let col = Math.floor(this.draggedBlock.x / this.cellSize);
+            let row = Math.floor(this.draggedBlock.y / this.cellSize);
+            if (this.draggedBlock.block.row !== row || this.draggedBlock.block.col !== col) {
+                this.gameMatrix[this.draggedBlock.block.row][this.draggedBlock.block.col] = 1;
+                this.gameMatrix[row][col] = this.draggedBlock.block.id;
 
-            this.draggedBlock.block.row = row;
-            this.draggedBlock.block.col = col;
+                this.draggedBlock.block.row = row;
+                this.draggedBlock.block.col = col;
+            }
         }
 
         if (this.checkAllBlocksInPlace()) {
+            this.levelCompleted = true;
             this.createPopup("Level Complete!", () => {
-                this.loadPrevLevel();
-            }, () => {
-                this.loadNextLevel();
-            }, () => {
-                window.close();
-            }, this.currentLevel, this.levels);
+                    this.loadPrevLevel();
+                }, () => {
+                    this.loadNextLevel();
+                }, () => {
+                    window.close();
+                },
+                () => {
+                    this.retryLevel();
+                },
+                this.currentLevel, this.levels, this.timesOut);
         }
     }
 
@@ -98,6 +125,26 @@ export default class Game {
     }
 
     update(delta) {
+        if (this.levelCompleted) return;
+
+        this.remainingTime -= delta / 60; // Припускаємо, що 60 кадрів в секунду
+        this.timerText.text = `Time: ${Math.max(0, Math.floor(this.remainingTime))}`; // Оновлюємо текст таймера
+
+        if (this.remainingTime <= 0 && !this.timesOut) {
+            this.timesOut = true;
+            this.remainingTime = 0; // Скидання залишку часу
+            this.createPopup("You didn’t fail.\n You just discovered what not to do.",
+                () => {
+                    this.loadPrevLevel();
+                }, () => {
+                    this.loadNextLevel();
+                }, () => {
+                    window.close();
+                }, () => {
+                    this.retryLevel()
+                }, this.currentLevel, this.levels, this.timesOut);
+        }
+
         if (this.dragging) {
             this.newMousePosition = this.mouse.subtract(this.draggedBlockOffset);
 
@@ -227,7 +274,6 @@ export default class Game {
     populateLevel(levelIndex) {
         const level = this.levels[levelIndex];
         if (!level) return;
-        console.log(level);
         level.forEach((row, rowIndex) => {
             row.forEach((col, colIndex) => {
                 if (col !== 0 && col !== '*' && col !== 1) {
@@ -272,10 +318,12 @@ export default class Game {
     }
 
     alignRectToGrid() {
-        this.draggedBlock.x = Math.round(this.draggedBlock.x / this.cellSize) * this.cellSize;
-        this.draggedBlock.y = Math.round(this.draggedBlock.y / this.cellSize) * this.cellSize;
+        // Check if draggedBlock is defined
+        if (this.draggedBlock) {
+            this.draggedBlock.x = Math.round(this.draggedBlock.x / this.cellSize) * this.cellSize;
+            this.draggedBlock.y = Math.round(this.draggedBlock.y / this.cellSize) * this.cellSize;
+        }
     }
-
     almostCenter() {
         const offset = 10;
         if (this.dragAxis === 'x') {
@@ -306,6 +354,8 @@ export default class Game {
         this.container.removeChild(this.popup.getPopupContainer());
         this.cellContainer.removeChildren();
         this.gameMatrix = this.createMatrix();
+        this.timesOut = false;
+        this.levelCompleted = false;
     }
 
     loadNextLevel() {
@@ -316,6 +366,7 @@ export default class Game {
             this.gameMatrix = this.createMatrix();
             this.populateLevel(this.currentLevel);
         }
+        this.startTimer();
     }
 
     loadPrevLevel() {
@@ -324,13 +375,19 @@ export default class Game {
 
         if (this.currentLevel < this.levels.length) {
             this.gameMatrix = this.createMatrix();
-            console.log(this.currentLevel)
             this.populateLevel(this.currentLevel);
         }
+        this.startTimer();
     }
 
-    createPopup(message, onPrevLevel, onNextLevel, onClose, currentLevel, levels) {
-        this.popup = new Popup(message, onPrevLevel, onNextLevel, onClose, currentLevel, levels);
+    retryLevel() {
+        this.clearCurrentLevel();
+        this.populateLevel(this.currentLevel);
+        this.startTimer();
+    }
+
+    createPopup(message, onPrevLevel, onNextLevel, onClose, onRetry, currentLevel, levels, timesOut) {
+        this.popup = new Popup(message, onPrevLevel, onNextLevel, onClose, onRetry, currentLevel, levels, timesOut);
         this.container.addChild(this.popup.getPopupContainer());
     }
 }

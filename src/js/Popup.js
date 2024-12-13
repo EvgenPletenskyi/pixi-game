@@ -1,13 +1,14 @@
 const {Container, Graphics, TextStyle, Text} = PIXI;
-
 export class Popup {
-    constructor(message, onPrevLevel, onNextLevel, onClose, currentLevel, levels) {
+    constructor(message, onPrevLevel, onNextLevel, onClose, onRetry, currentLevel, levels, timesOut) {
         this.message = message;
         this.onPrevLevel = onPrevLevel;
         this.onNextLevel = onNextLevel;
         this.onClose = onClose;
+        this.onRetry = onRetry; // Додано
         this.currentLevel = currentLevel;
         this.levels = levels;
+        this.timesOut = timesOut;
 
         this.popupContainer = new Container();
         this.createPopup();
@@ -52,7 +53,7 @@ export class Popup {
             prevButton.beginFill(0xff0000); // Червона кнопка
             prevButton.drawRoundedRect(0, 0, 150, 50, 10);
             prevButton.endFill();
-            prevButton.x = (1024 - 150) / 2;
+            prevButton.x = (1024 - 150) / 2 - 170; // Зміщення вліво
             prevButton.y = (768 + popupHeight) / 2 - 100;
             prevButton.interactive = true;
             prevButton.buttonMode = true;
@@ -71,13 +72,13 @@ export class Popup {
             prevButton.on("pointerdown", this.onPrevLevel);
         }
 
-        if (this.currentLevel < this.levels.length - 1) {
+        if (this.currentLevel < this.levels.length - 1 && !this.timesOut) {
             const nextButton = new Graphics();
             nextButton.beginFill(0x007bff); // Синя кнопка
             nextButton.drawRoundedRect(0, 0, 150, 50, 10);
             nextButton.endFill();
-            nextButton.x = (1024 - 150) / 2;
-            nextButton.y = (768 + popupHeight) / 2 - 40;
+            nextButton.x = (1024 - 150) / 2 + 170; // Зміщення вправо
+            nextButton.y = (768 + popupHeight) / 2 - 100;
             nextButton.interactive = true;
             nextButton.buttonMode = true;
             this.popupContainer.addChild(nextButton);
@@ -95,7 +96,30 @@ export class Popup {
             nextButton.on("pointerdown", this.onNextLevel);
         }
 
-        if (this.currentLevel === this.levels.length - 1) {
+        // Додати кнопку "Retry"
+        const retryButton = new Graphics();
+        retryButton.beginFill(0x28a745); // Зелена кнопка
+        retryButton.drawRoundedRect(0, 0, 150, 50, 10);
+        retryButton .endFill();
+        retryButton.x = (1024 - 150) / 2;
+        retryButton.y = (768 + popupHeight) / 2 - 40;
+        retryButton.interactive = true;
+        retryButton.buttonMode = true;
+        this.popupContainer.addChild(retryButton);
+
+        const retryButtonText = new Text("Retry", {
+            fontFamily: "Arial",
+            fontSize: 18,
+            fill: "#ffffff",
+        });
+        retryButtonText.anchor.set(0.5);
+        retryButtonText.x = retryButton.width / 2;
+        retryButtonText.y = retryButton.height / 2;
+        retryButton.addChild(retryButtonText);
+
+        retryButton.on("pointerdown", this.onRetry); // Додано обробник події для кнопки "Retry"
+
+        if (this.currentLevel === this.levels.length - 1 && !this.timesOut) {
             const closeButton = new Graphics();
             closeButton.beginFill(0x007bff);
             closeButton.drawRoundedRect(0, 0, 150, 50, 10);
